@@ -11,18 +11,13 @@ app.use(express.urlencoded({ extended: false }));
 
 // Add session middleware with a secret
 app.use(session({
-  secret: process.env.SESSION_SECRET || '3a7f5b8c9d0e1f2a3b4c5d6e7f8a9b0c', // Use environment variable or fallback
+  secret: process.env.SESSION_SECRET, // Use environment variable
   resave: false,
   saveUninitialized: true,
   cookie: { secure: process.env.NODE_ENV === 'production' } // Secure cookies in production
 }));
 
 // Your other middleware and routes...
-
-const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
