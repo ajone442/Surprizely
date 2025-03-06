@@ -108,7 +108,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messages: [
           {
             role: "system",
-            content: "You are a helpful gift suggestion assistant. Make suggestions based on the person's interests and preferences. Keep responses concise and focused on gift ideas.",
+            content: `You are a gift recommendation assistant for an online store. 
+            When given product data and user preferences, analyze both to match the ideal products.
+            Consider all user preferences including relationship, interests, and budget.
+            If products contain specific details about materials, features, or style, use these to make better matches.
+            Always return your response as a JSON object with a "recommendations" array containing matching products.
+            Each recommendation should include the original product data plus an "explanation" field explaining why this product matches.`,
           },
           {
             role: "user",

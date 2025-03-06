@@ -83,9 +83,19 @@ export default function GiftQuiz({ open, onClose }: GiftQuizProps) {
   const getRecommendations = async (quizAnswers: Record<string, string>) => {
     setIsLoading(true);
     try {
+      // First, fetch all available products
+      const productsResponse = await apiRequest("GET", "/api/products");
+      const products = await productsResponse.json();
+      
+      // Then use AI to analyze user answers and match with actual products
       const response = await apiRequest("POST", "/api/chat", {
-        message: `Based on this quiz data: ${JSON.stringify(quizAnswers)}, suggest some gift ideas.`
+        message: `I have a user who answered a gift recommendation quiz with these answers: ${JSON.stringify(quizAnswers)}. 
+        Here are the products in my catalog: ${JSON.stringify(products)}. 
+        Please recommend specific products from my catalog that match the user's preferences. 
+        Consider the relationship (${quizAnswers.relationship}), interests (${quizAnswers.interests}), and budget (${quizAnswers.budget}).
+        Format your response as JSON with an array of product recommendations and explanation for each.`
       });
+      
       const data = await response.json();
       setRecommendations([data.message]);
     } catch (error) {
@@ -141,9 +151,43 @@ export default function GiftQuiz({ open, onClose }: GiftQuizProps) {
                   </div>
                 ) : (
                   <>
-                    {recommendations.map((rec, i) => (
-                      <div key={i} className="whitespace-pre-wrap">{rec}</div>
-                    ))}
+                    {recommendations.map((rec, i) => {
+                      // Try to parse the JSON response
+                      let parsedRecs;
+                      try {
+                        parsedRecs = JSON.parse(rec);
+                      } catch (e) {
+                        // If parsing fails, just show the text
+                        return <div key={i} className="whitespace-pre-wrap">{rec}</div>;
+                      }
+                      
+                      // If we have parsed recommendations in JSON format
+                      if (parsedRecs && parsedRecs.recommendations) {
+                        return (
+                          <div key={i} className="space-y-6">
+                            {parsedRecs.recommendations.map((item, idx) => (
+                              <div key={idx} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                                <h4 className="text-lg font-semibold">{item.name}</h4>
+                                <p className="text-sm text-muted-foreground mb-2">{item.price}</p>
+                                <p className="mb-2">{item.description}</p>
+                                {item.explanation && (
+                                  <p className="text-sm italic border-l-2 pl-3 my-2 border-primary">{item.explanation}</p>
+                                )}
+                                {item.imageUrl && (
+                                  <img 
+                                    src={item.imageUrl} 
+                                    alt={item.name} 
+                                    className="w-full h-40 object-cover rounded-md my-2" 
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      } else {
+                        return <div key={i} className="whitespace-pre-wrap">{rec}</div>;
+                      }
+                    })}
                     <Button
                       onClick={resetQuiz}
                       className="mt-4"
