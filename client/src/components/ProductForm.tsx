@@ -64,7 +64,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      // Convert price string to number
+      // Use price as-is without conversion
       const dataToSubmit = {
         ...data,
         price: Number(data.price),

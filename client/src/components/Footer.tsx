@@ -1,8 +1,9 @@
+
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { ExternalLink, Settings, ShoppingBag, Heart, Phone, Mail, MapPin } from "lucide-react";
 
-export function Footer() {
+export default function Footer() {
   const { user } = useAuth();
   return (
     <footer className="mt-auto border-t bg-slate-100 py-8 shadow-inner">
@@ -24,7 +25,7 @@ export function Footer() {
               </Link>
             )}
           </div>
-
+          
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Quick Links</h3>
             <ul className="space-y-2">
@@ -34,50 +35,39 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/wishlist">
-                  <a className="text-sm text-muted-foreground hover:text-primary">
-                    <Heart className="mr-1 inline-block h-4 w-4" />
-                    Wishlist
-                  </a>
+                <Link href="/gifts">
+                  <a className="text-sm text-muted-foreground hover:text-primary">Browse Gifts</a>
                 </Link>
               </li>
               <li>
-                <Link href="/products">
-                  <a className="text-sm text-muted-foreground hover:text-primary">
-                    <ShoppingBag className="mr-1 inline-block h-4 w-4" />
-                    All Products
-                  </a>
+                <Link href="/wishlists">
+                  <a className="text-sm text-muted-foreground hover:text-primary">Wishlists</a>
                 </Link>
               </li>
             </ul>
           </div>
-
+          
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Categories</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/?category=Electronics">
+                <Link href="/category/electronics">
                   <a className="text-sm text-muted-foreground hover:text-primary">Electronics</a>
                 </Link>
               </li>
               <li>
-                <Link href="/?category=Clothing">
-                  <a className="text-sm text-muted-foreground hover:text-primary">Clothing</a>
-                </Link>
-              </li>
-              <li>
-                <Link href="/?category=Home">
+                <Link href="/category/home">
                   <a className="text-sm text-muted-foreground hover:text-primary">Home & Garden</a>
                 </Link>
               </li>
               <li>
-                <Link href="/?category=Books">
-                  <a className="text-sm text-muted-foreground hover:text-primary">Books</a>
+                <Link href="/category/fashion">
+                  <a className="text-sm text-muted-foreground hover:text-primary">Fashion</a>
                 </Link>
               </li>
             </ul>
           </div>
-
+          
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Contact Us</h3>
             <ul className="space-y-2">
