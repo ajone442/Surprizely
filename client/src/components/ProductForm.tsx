@@ -47,35 +47,34 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   });
 
   const onSubmit = async (data: any) => {
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      // Convert price to number before submission
-      const submitData = {
+      // Convert price from decimal (e.g., "12.50") to cents (1250)
+      const dataToSubmit = {
         ...data,
-        price: parseFloat(data.price),
+        price: Math.round(parseFloat(data.price) * 100),
       };
 
       if (product) {
-        await apiRequest("PATCH", `/api/products/${product.id}`, submitData);
-        toast({
-          title: "Product updated",
-          description: "The product has been successfully updated.",
-        });
+        await apiRequest("PATCH", `/api/products/${product.id}`, dataToSubmit);
       } else {
-        await apiRequest("POST", "/api/products", submitData);
-        toast({
-          title: "Product created",
-          description: "The new product has been successfully created.",
-        });
+        await apiRequest("POST", "/api/products", dataToSubmit);
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({
+        title: product ? "Product updated" : "Product created",
+        description: product
+          ? "The product has been successfully updated."
+          : "The product has been successfully created.",
+      });
+      if (onComplete) onComplete();
       form.reset();
-      onComplete();
+      //if (addMode === "url") setProductUrl(""); //addMode is not defined in this scope.
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to save product. Please check all fields are filled correctly.",
+        description: "Failed to save product",
         variant: "destructive",
       });
     } finally {
