@@ -7,7 +7,7 @@ import { insertProductSchema, insertWishlistSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { parseProductUrl } from "./product-parser";
 import passport from 'passport';
-import { hashPassword } from './auth';
+import { hash as hashPassword } from './auth';
 
 
 function isAdmin(req: Express.Request, res: Express.Response, next: Express.NextFunction) {
