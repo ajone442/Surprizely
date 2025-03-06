@@ -44,8 +44,7 @@ export const insertProductSchema = createInsertSchema(products)
     category: true,
   })
   .extend({
-    price: z.number()
-      .min(0, "Price must be greater than or equal to 0"),
+    price: z.string(),
   });
 
 export const insertWishlistSchema = createInsertSchema(wishlist).pick({

@@ -64,10 +64,10 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      // Use price as-is without conversion
+      // Send price as string without conversion
       const dataToSubmit = {
         ...data,
-        price: Number(data.price),
+        price: data.price,
       };
 
       if (product) {
@@ -153,12 +153,11 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price">Price ($)</Label>
+            <Label htmlFor="price">Price</Label>
             <Input
               id="price"
               type="text"
-              inputMode="decimal"
-              placeholder="Enter price (e.g. 12.50)"
+              placeholder="Enter price (e.g. $12.50, Free, etc.)"
               {...form.register("price", {
                 setValueAs: (value) => (value === "" ? undefined : value),
                 required: "Price is required",
