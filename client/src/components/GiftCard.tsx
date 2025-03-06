@@ -86,7 +86,7 @@ export default function GiftCard({ product }: GiftCardProps) {
       <CardContent>
         <p className="text-sm text-muted-foreground">{product.description}</p>
         <p className="mt-2 text-lg font-semibold">
-          ${(product.price / 100).toFixed(2)}
+          ${product.price}
         </p>
       </CardContent>
       <CardFooter className="flex gap-2">

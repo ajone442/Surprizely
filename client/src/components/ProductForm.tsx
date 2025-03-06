@@ -64,10 +64,10 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      // Use price as-is without conversion
+      // Ensure price is properly converted to a number
       const dataToSubmit = {
         ...data,
-        price: parseInt(data.price, 10),
+        price: Number(data.price),
       };
 
       if (product) {
