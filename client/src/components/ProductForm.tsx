@@ -40,7 +40,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
       category: product?.category || "",
     },
   });
-  
+
   // Set form values when product data is available
   React.useEffect(() => {
     if (product) {
@@ -64,7 +64,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      // Ensure price is properly converted to a number
+      // Convert price string to number
       const dataToSubmit = {
         ...data,
         price: Number(data.price),

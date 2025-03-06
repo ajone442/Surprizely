@@ -35,7 +35,7 @@ function App() {
           <main className="flex-1">
             <Router />
           </main>
-          <Footer /> {/* Added Footer component */}
+          <Footer />
         </div>
         <Toaster />
       </AuthProvider>
