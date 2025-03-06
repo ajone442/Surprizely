@@ -36,7 +36,7 @@ export async function parseProductUrl(url: string): Promise<ParsedProduct | null
     return {
       name: titleMatch[1],
       description: descriptionMatch[1],
-      price: Math.round(parseFloat(priceMatch[1]) * 100), // Convert to cents
+      price: parseFloat(priceMatch[1]), // Use direct price value
       imageUrl: imageMatch[1],
       affiliateLink: url,
     };

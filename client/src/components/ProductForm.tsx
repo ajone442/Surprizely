@@ -34,7 +34,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
     defaultValues: {
       name: product?.name || "",
       description: product?.description || "",
-      price: product?.price ? (product.price / 100).toFixed(2) : "",
+      price: product?.price ? String(product.price) : "",
       imageUrl: product?.imageUrl || "",
       affiliateLink: product?.affiliateLink || "",
       category: product?.category || "",
@@ -47,7 +47,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
       form.reset({
         name: product.name,
         description: product.description,
-        price: (product.price / 100).toFixed(2),
+        price: String(product.price),
         imageUrl: product.imageUrl,
         affiliateLink: product.affiliateLink,
         category: product.category,
@@ -64,10 +64,10 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      // Convert price from decimal (e.g., "12.50") to cents (1250)
+      // Use price as-is without conversion
       const dataToSubmit = {
         ...data,
-        price: Math.round(parseFloat(data.price) * 100),
+        price: parseInt(data.price, 10),
       };
 
       if (product) {
@@ -290,12 +290,12 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="price">Price ($)</Label>
+              <Label htmlFor="price">Price</Label>
               <Input
                 id="price"
                 type="text"
-                inputMode="decimal"
-                placeholder="Enter price (e.g. 12.50)"
+                inputMode="numeric"
+                placeholder="Enter price"
                 {...form.register("price", {
                   setValueAs: (value) => (value === "" ? undefined : value),
                   required: "Price is required",

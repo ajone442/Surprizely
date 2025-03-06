@@ -78,7 +78,7 @@ export default function AdminPage() {
                     <div>
                       <h3 className="font-semibold">{product.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {product.category} - ${(product.price / 100).toFixed(2)}
+                        {product.category} - ${product.price}
                       </p>
                     </div>
                     <div className="flex gap-2">

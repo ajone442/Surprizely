@@ -34,7 +34,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
 });
 
-// Custom validation for price to handle dollars to cents conversion
+// Product schema with simplified price handling
 export const insertProductSchema = createInsertSchema(products)
   .pick({
     name: true,
@@ -45,8 +45,7 @@ export const insertProductSchema = createInsertSchema(products)
   })
   .extend({
     price: z.number()
-      .min(0, "Price must be greater than or equal to 0")
-      .transform(price => Math.round(price * 100)), // Convert dollars to cents
+      .min(0, "Price must be greater than or equal to 0"),
   });
 
 export const insertWishlistSchema = createInsertSchema(wishlist).pick({
