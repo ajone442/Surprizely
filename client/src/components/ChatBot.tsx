@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SendHorizonal, Bot } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
 
 interface Message {
@@ -62,35 +62,14 @@ Based on the user's request and available products, suggest appropriate gift opt
 
       let formattedResponse = response.data.message;
 
-      // Try to parse JSON if the response contains it
-      try {
-        if (typeof formattedResponse === 'string' && formattedResponse.includes('"recommendations"')) {
-          const jsonStart = formattedResponse.indexOf('{');
-          const jsonEnd = formattedResponse.lastIndexOf('}') + 1;
-          if (jsonStart >= 0 && jsonEnd > jsonStart) {
-            const jsonStr = formattedResponse.substring(jsonStart, jsonEnd);
-            const data = JSON.parse(jsonStr);
-
-            if (data.recommendations && Array.isArray(data.recommendations)) {
-              formattedResponse = "Here are some gift ideas I found for you:\n\n" + 
-                data.recommendations.map((rec: any, index: number) => 
-                  `${index + 1}. **${rec.name}** - $${rec.price}\n${rec.explanation || rec.description || ''}`
-                ).join("\n\n");
-            }
-          }
-        }
-      } catch (e) {
-        console.log("Error parsing JSON response:", e);
-        // Continue with text response if parsing fails
-      }
-
+      // Add assistant response to messages
       const assistantMessage: Message = { role: "assistant", content: formattedResponse };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error("Chat error:", error);
       toast({
         title: "Error",
-        description: "Failed to get a response. Please try again.",
+        description: "Failed to get response. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -100,64 +79,56 @@ Based on the user's request and available products, suggest appropriate gift opt
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-[500px] h-[600px] flex flex-col">
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <Bot className="mr-2 h-5 w-5" />
-            Gift Assistant
+          <DialogTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            Gift Recommendation Assistant
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 my-4 max-h-[400px] min-h-[300px]">
           {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground p-4">
-              Describe who you're buying for and what they like, and I'll help you find the perfect gift!
+            <div className="text-center text-muted-foreground h-full flex items-center justify-center">
+              <p>Ask for gift recommendations!</p>
             </div>
           ) : (
             messages.map((message, index) => (
-              <Card
-                key={index}
-                className={`p-3 ${
-                  message.role === "assistant" ? "bg-primary/10" : "bg-secondary/10"
-                }`}
+              <Card 
+                key={index} 
+                className={`p-3 ${message.role === 'user' ? 'bg-primary text-primary-foreground ml-12' : 'bg-muted mr-12'}`}
               >
-                <div className="font-semibold mb-1">
-                  {message.role === "assistant" ? "Gift Assistant" : "You"}
-                </div>
-                <div className="whitespace-pre-wrap">{message.content}</div>
+                {message.content}
               </Card>
             ))
           )}
           {isLoading && (
-            <Card className="p-3 bg-primary/10">
-              <div className="font-semibold mb-1">Gift Assistant</div>
-              <div className="animate-pulse">Thinking...</div>
+            <Card className="p-3 bg-muted mr-12">
+              <div className="flex items-center space-x-2">
+                <div className="h-3 w-3 bg-foreground/20 rounded-full animate-pulse"></div>
+                <div className="h-3 w-3 bg-foreground/20 rounded-full animate-pulse delay-75"></div>
+                <div className="h-3 w-3 bg-foreground/20 rounded-full animate-pulse delay-150"></div>
+              </div>
             </Card>
           )}
         </div>
 
-        <div className="border-t p-4">
-          <div className="flex gap-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about gift ideas..."
-              className="flex-1"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-            <Button
-              onClick={handleSend}
-              disabled={isLoading || !input.trim()}
-              className="self-end"
-            >
-              <SendHorizonal className="h-5 w-5" />
-            </Button>
-          </div>
+        <div className="flex items-center space-x-2">
+          <Textarea 
+            value={input} 
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask about gift recommendations..."
+            className="min-h-[50px] flex-1"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+          />
+          <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
+            <SendHorizonal className="h-4 w-4" />
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
