@@ -73,7 +73,7 @@ export default function GiftCard({ product }: GiftCardProps) {
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden flex flex-col h-full">
       <img
         src={product.imageUrl}
         alt={product.name}
@@ -83,13 +83,13 @@ export default function GiftCard({ product }: GiftCardProps) {
         <CardTitle>{product.name}</CardTitle>
         <CardDescription>{product.category}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-grow">
         <p className="text-sm text-muted-foreground">{product.description}</p>
         <p className="mt-2 text-lg font-semibold">
           ${product.price}
         </p>
       </CardContent>
-      <CardFooter className="flex gap-2">
+      <CardFooter className="flex gap-2 mt-auto">
         <Button
           variant="outline"
           size="icon"
