@@ -7,7 +7,7 @@ import { insertProductSchema, insertWishlistSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { parseProductUrl } from "./product-parser";
 import passport from 'passport';
-import { hash as hashPassword } from './auth';
+import { hashPassword } from "./auth";
 
 
 function isAdmin(req: Express.Request, res: Express.Response, next: Express.NextFunction) {
@@ -145,48 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/register", async (req, res, next) => {
-    try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
-      }
-
-      // Set isAdmin true only for specific email/username
-      const isAdmin = req.body.username === process.env.ADMIN_USERNAME;
-
-      const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
-        isAdmin,
-      });
-
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(user);
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      res.status(500).json({ message: "Failed to register. Please try again." });
-    }
-  });
-
-  app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
-      if (err) {
-        return next(err);
-      }
-      if (!user) {
-        return res.status(401).json({ message: "Invalid username or password" });
-      }
-      req.login(user, (err) => {
-        if (err) {
-          return next(err);
-        }
-        return res.status(200).json(user);
-      });
-    })(req, res, next);
-  });
+  // Routes for login and register are already defined in setupAuth
 
   const httpServer = createServer(app);
   return httpServer;
