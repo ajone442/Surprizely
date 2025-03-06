@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import * as React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ProductFormProps {
@@ -39,6 +40,20 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
       category: product?.category || "",
     },
   });
+  
+  // Set form values when product data is available
+  React.useEffect(() => {
+    if (product) {
+      form.reset({
+        name: product.name,
+        description: product.description,
+        price: (product.price / 100).toFixed(2),
+        imageUrl: product.imageUrl,
+        affiliateLink: product.affiliateLink,
+        category: product.category,
+      });
+    }
+  }, [product, form]);
 
   const urlForm = useForm({
     defaultValues: {
@@ -141,12 +156,11 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
             <Label htmlFor="price">Price ($)</Label>
             <Input
               id="price"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Enter price"
+              type="text"
+              inputMode="decimal"
+              placeholder="Enter price (e.g. 12.50)"
               {...form.register("price", {
-                setValueAs: (value) => (value === "" ? undefined : parseFloat(value)),
+                setValueAs: (value) => (value === "" ? undefined : value),
                 required: "Price is required",
               })}
             />
@@ -279,12 +293,11 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
               <Label htmlFor="price">Price ($)</Label>
               <Input
                 id="price"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Enter price"
+                type="text"
+                inputMode="decimal"
+                placeholder="Enter price (e.g. 12.50)"
                 {...form.register("price", {
-                  setValueAs: (value) => (value === "" ? undefined : parseFloat(value)),
+                  setValueAs: (value) => (value === "" ? undefined : value),
                   required: "Price is required",
                 })}
               />
