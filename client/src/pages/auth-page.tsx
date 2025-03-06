@@ -124,10 +124,14 @@ export default function AuthPage() {
                     className="w-full"
                     disabled={registerMutation.isPending}
                   >
-                    Register
+                    {registerMutation.isPending ? "Registering..." : "Register"}
                   </Button>
-                  {/* Empty button to match the layout with login tab */}
-                  <div className="h-10"></div>
+                  {registerMutation.isError && (
+                    <div className="text-destructive text-sm mt-2">
+                      {registerMutation.error?.message || "Registration failed. Please try again."}
+                    </div>
+                  )}
+                  <div className="h-4"></div>
                 </form>
               </TabsContent>
             </Tabs>
