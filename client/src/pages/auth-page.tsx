@@ -124,8 +124,10 @@ export default function AuthPage() {
                     className="w-full"
                     disabled={registerMutation.isPending}
                   >
-                    Create Account
+                    Register
                   </Button>
+                  {/* Empty button to match the layout with login tab */}
+                  <div className="h-10"></div>
                 </form>
               </TabsContent>
             </Tabs>
