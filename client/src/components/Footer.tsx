@@ -1,4 +1,3 @@
-
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { ExternalLink, Settings, ShoppingBag, Heart, Phone, Mail, MapPin } from "lucide-react";
@@ -6,7 +5,7 @@ import { ExternalLink, Settings, ShoppingBag, Heart, Phone, Mail, MapPin } from 
 export default function Footer() {
   const { user } = useAuth();
   return (
-    <footer className="mt-auto border-t bg-slate-100 py-8 shadow-inner">
+    <footer className="mt-auto border-t relative z-10 bg-background py-8 shadow-inner">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div className="space-y-4">
@@ -25,7 +24,7 @@ export default function Footer() {
               </Link>
             )}
           </div>
-          
+
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Quick Links</h3>
             <ul className="space-y-2">
@@ -46,7 +45,7 @@ export default function Footer() {
               </li>
             </ul>
           </div>
-          
+
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Categories</h3>
             <ul className="space-y-2">
@@ -67,7 +66,7 @@ export default function Footer() {
               </li>
             </ul>
           </div>
-          
+
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Contact Us</h3>
             <ul className="space-y-2">
