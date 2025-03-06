@@ -53,7 +53,7 @@ export default function AuthPage() {
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="login">
+              <TabsContent value="login" className="min-h-[240px]">
                 <form
                   onSubmit={loginForm.handleSubmit((data) =>
                     loginMutation.mutate(data)
@@ -96,7 +96,7 @@ export default function AuthPage() {
                 </form>
               </TabsContent>
 
-              <TabsContent value="register">
+              <TabsContent value="register" className="min-h-[240px]">
                 <form
                   onSubmit={registerForm.handleSubmit((data) =>
                     registerMutation.mutate(data)
