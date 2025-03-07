@@ -21,15 +21,15 @@ export default function AdminPage() {
   const [showRatings, setShowRatings] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState(null);
 
-  const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
-    queryFn: fetchProducts //Added fetchProducts function call here
-  });
-
   const fetchProducts = async () => {
     const data = await apiRequest("GET", "/api/products");
     return data;
   }
+
+  const { data: products = [] } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+    queryFn: fetchProducts
+  });
 
   const handleDelete = async (id: number) => {
     try {
