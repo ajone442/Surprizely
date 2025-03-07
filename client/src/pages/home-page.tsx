@@ -7,6 +7,7 @@ import ChatBot from "@/components/ChatBot";
 import GiftQuiz from "@/components/GiftQuiz";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, BrainCircuit } from "lucide-react";
+import { ProductCard } from "@/components/ProductCard"; // Added import for ProductCard
 
 export default function HomePage() {
   const [showChat, setShowChat] = useState(false);
@@ -59,7 +60,7 @@ export default function HomePage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.map((product) => (
-                  <GiftCard key={product.id} product={product} />
+                  <ProductCard key={product.id} product={product} /> {/* Replaced GiftCard with ProductCard */}
                 ))}
               </div>
             )}

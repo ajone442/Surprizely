@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import openai from "./openai";
-import { insertProductSchema, insertWishlistSchema } from "@shared/schema";
+import { insertProductSchema, insertWishlistSchema, insertRatingSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { parseProductUrl } from "./product-parser";
 import passport from 'passport';
@@ -101,6 +101,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const productId = parseInt(req.params.productId);
     await storage.removeFromWishlist(req.user!.id, productId);
     res.sendStatus(204);
+  });
+  
+  // Rating routes
+  app.get("/api/ratings/:productId", async (req, res) => {
+    const productId = parseInt(req.params.productId);
+    const ratings = await storage.getRatings(productId);
+    res.json(ratings);
+  });
+  
+  app.get("/api/ratings/user/:productId", isAuthenticated, async (req, res) => {
+    const productId = parseInt(req.params.productId);
+    const rating = await storage.getUserRating(req.user!.id, productId);
+    res.json(rating || { rating: 0 });
+  });
+  
+  app.post("/api/ratings/:productId", isAuthenticated, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.productId);
+      const ratingData = insertRatingSchema.parse({
+        userId: req.user!.id,
+        productId,
+        rating: req.body.rating
+      });
+      
+      const updatedProduct = await storage.rateProduct(ratingData);
+      res.status(201).json(updatedProduct);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json(error.errors);
+      } else {
+        throw error;
+      }
+    }
+  });
+  
+  // Admin only rating routes
+  app.put("/api/admin/ratings/:ratingId", isAdmin, async (req, res) => {
+    try {
+      const ratingId = parseInt(req.params.ratingId);
+      const { rating } = req.body;
+      
+      if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Rating must be a number between 1 and 5" });
+      }
+      
+      const updatedProduct = await storage.updateRating(ratingId, rating);
+      res.json(updatedProduct);
+    } catch (error) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+  
+  app.delete("/api/admin/ratings/:ratingId", isAdmin, async (req, res) => {
+    try {
+      const ratingId = parseInt(req.params.ratingId);
+      const updatedProduct = await storage.deleteRating(ratingId);
+      res.json(updatedProduct);
+    } catch (error) {
+      res.status(400).json({ message: error.message });
+    }
   });
 
   // Chat endpoint for gift suggestions

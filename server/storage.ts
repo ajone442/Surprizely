@@ -1,4 +1,4 @@
-import { InsertProduct, InsertUser, InsertWishlist, Product, User, Wishlist } from "@shared/schema";
+import { InsertProduct, InsertUser, InsertWishlist } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
@@ -17,23 +17,47 @@ export interface IStorage {
   getWishlist(userId: number): Promise<Product[]>;
   addToWishlist(wishlist: InsertWishlist): Promise<void>;
   removeFromWishlist(userId: number, productId: number): Promise<void>;
+  getRatings(productId: number): Promise<Rating[]>;
+  getUserRating(userId: number, productId: number): Promise<Rating | null>;
+  rateProduct(ratingData: InsertRating): Promise<Product | undefined>;
+  updateRating(ratingId: number, newRating: number): Promise<Product | undefined>;
+  deleteRating(ratingId: number): Promise<Product | undefined>;
   sessionStore: session.Store;
 }
+
+interface Rating {
+  id: number;
+  userId: number;
+  productId: number;
+  rating: number;
+  createdAt: string;
+}
+
+interface InsertRating {
+  userId: number;
+  productId: number;
+  rating: number;
+}
+
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private products: Map<number, Product>;
   private wishlist: Map<number, Set<number>>;
+  private ratings: Map<number, Rating[]>;
   private currentUserId: number;
   private currentProductId: number;
+  private currentRatingId: number;
   sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
     this.products = new Map();
     this.wishlist = new Map();
+    this.ratings = new Map();
     this.currentUserId = 1;
     this.currentProductId = 1;
+    this.currentRatingId = 1;
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
@@ -80,8 +104,9 @@ export class MemStorage implements IStorage {
 
   async createProduct(insertProduct: InsertProduct): Promise<Product> {
     const id = this.currentProductId++;
-    const product: Product = { ...insertProduct, id };
+    const product: Product = { ...insertProduct, id, averageRating: 0, ratingCount: 0 };
     this.products.set(id, product);
+    this.ratings.set(id, []);
     return product;
   }
 
@@ -102,6 +127,7 @@ export class MemStorage implements IStorage {
     for (const userWishlist of this.wishlist.values()) {
       userWishlist.delete(id);
     }
+    this.ratings.delete(id);
   }
 
   async getWishlist(userId: number): Promise<Product[]> {
@@ -123,6 +149,72 @@ export class MemStorage implements IStorage {
     const userWishlist = this.wishlist.get(userId);
     if (!userWishlist) return;
     userWishlist.delete(productId);
+  }
+
+  async getRatings(productId: number): Promise<Rating[]> {
+    return this.ratings.get(productId) || [];
+  }
+
+  async getUserRating(userId: number, productId: number): Promise<Rating | null> {
+    const ratingsForProduct = this.ratings.get(productId);
+    if (!ratingsForProduct) return null;
+    return ratingsForProduct.find(r => r.userId === userId) || null;
+  }
+
+  async rateProduct(ratingData: InsertRating): Promise<Product | undefined> {
+    const productId = ratingData.productId;
+    const existingRating = await this.getUserRating(ratingData.userId, productId);
+
+    if (existingRating) {
+      //Update existing rating
+      const updatedRating: Rating = { ...existingRating, rating: ratingData.rating, createdAt: new Date().toISOString()};
+      const updatedRatings = [...this.ratings.get(productId)!.filter(r => r.id !== existingRating.id), updatedRating];
+      this.ratings.set(productId, updatedRatings);
+    } else {
+      const newRating: Rating = { id: this.currentRatingId++, ...ratingData, createdAt: new Date().toISOString()};
+      const productRatings = this.ratings.get(productId) || [];
+      this.ratings.set(productId, [...productRatings, newRating]);
+    }
+
+    const productRatings = this.ratings.get(productId) || [];
+    const averageRating = productRatings.reduce((sum, r) => sum + r.rating, 0) / productRatings.length || 0;
+    const updatedProduct = {...this.products.get(productId)!, averageRating: Math.round(averageRating * 10) / 10, ratingCount: productRatings.length};
+    this.products.set(productId, updatedProduct);
+
+    return updatedProduct;
+  }
+
+
+  async updateRating(ratingId: number, newRating: number): Promise<Product | undefined> {
+    const ratingToUpdate = Array.from(this.ratings.values()).flat().find(r => r.id === ratingId);
+
+    if(!ratingToUpdate) {
+      throw new Error("Rating not found");
+    }
+
+    const updatedRating:Rating = {...ratingToUpdate, rating: newRating, createdAt: new Date().toISOString()};
+    const productRatings = this.ratings.get(ratingToUpdate.productId)!.map(r => r.id === ratingId ? updatedRating : r);
+    this.ratings.set(ratingToUpdate.productId, productRatings);
+    const averageRating = productRatings.reduce((sum, r) => sum + r.rating, 0) / productRatings.length || 0;
+    const updatedProduct = {...this.products.get(ratingToUpdate.productId)!, averageRating: Math.round(averageRating * 10) / 10, ratingCount: productRatings.length};
+    this.products.set(ratingToUpdate.productId, updatedProduct);
+    return updatedProduct;
+
+  }
+
+  async deleteRating(ratingId: number): Promise<Product | undefined> {
+    const ratingToDelete = Array.from(this.ratings.values()).flat().find(r => r.id === ratingId);
+    if (!ratingToDelete) {
+      throw new Error("Rating not found");
+    }
+    const productId = ratingToDelete.productId;
+    const updatedRatings = this.ratings.get(productId)!.filter(r => r.id !== ratingId);
+    this.ratings.set(productId, updatedRatings);
+
+    const averageRating = updatedRatings.length > 0 ? updatedRatings.reduce((sum, r) => sum + r.rating, 0) / updatedRatings.length : 0;
+    const updatedProduct = {...this.products.get(productId)!, averageRating: Math.round(averageRating * 10) / 10, ratingCount: updatedRatings.length};
+    this.products.set(productId, updatedProduct);
+    return updatedProduct;
   }
 }
 
