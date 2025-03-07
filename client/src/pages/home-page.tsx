@@ -15,9 +15,12 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: products = [], isLoading } = useQuery<Product[]>({
+  const { data, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
+  
+  // Ensure products is always an array
+  const products = Array.isArray(data) ? data : [];
 
   const filteredProducts = products.filter((product) => {
     const matchesCategory = !selectedCategory || product.category === selectedCategory;
