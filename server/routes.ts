@@ -145,7 +145,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Routes for login and register are already defined in setupAuth
+  app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    res.json(req.user);
+  });
+
+  // Account management routes
+  app.post("/api/account/password", isAuthenticated, async (req, res) => {
+    try {
+      const { password } = req.body;
+
+      if (!password || password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+
+      const hashedPassword = await hashPassword(password);
+      await storage.updateUser(req.user!.id, { password: hashedPassword });
+
+      res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Password update error:", error);
+      res.status(500).json({ message: "Failed to update password" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

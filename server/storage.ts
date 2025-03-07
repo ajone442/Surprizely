@@ -8,6 +8,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined>; // Added updateUser function
 
   getProducts(): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
@@ -65,6 +66,15 @@ export class MemStorage implements IStorage {
     this.wishlist.set(id, new Set());
     return user;
   }
+
+  async updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined> { // Added updateUser function
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    const updatedUser = { ...user, ...data };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
 
   async getProducts(): Promise<Product[]> {
     return Array.from(this.products.values());

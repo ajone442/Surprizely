@@ -45,6 +45,12 @@ export default function Navigation() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href="/account">
+                      <User className="mr-2 h-4 w-4" />
+                      Manage Account
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => logoutMutation.mutate()}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
