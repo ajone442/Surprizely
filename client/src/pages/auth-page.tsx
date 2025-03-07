@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
 import { Gift } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast"; // Added import for useToast
 
 // Custom validation schema for password
 import React from "react";
@@ -20,7 +21,8 @@ const passwordSchema = z.string().min(7).regex(/^(?=.*[A-Z])/, "Password must co
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
-  
+  const { toast } = useToast();
+
   // Initialize forms outside of any conditional to avoid hooks issues
   const loginForm = useForm({
     resolver: zodResolver(insertUserSchema),
@@ -39,7 +41,7 @@ export default function AuthPage() {
       password: "",
     },
   });
-  
+
   // Use effect for redirect instead of conditional return
   React.useEffect(() => {
     if (user) {
@@ -48,7 +50,29 @@ export default function AuthPage() {
       setLocation(redirect);
     }
   }, [user, setLocation]);
-  
+
+  // Handle successful login
+  React.useEffect(() => {
+    if (loginMutation.isSuccess) {
+      toast({
+        title: "Login Successful",
+        description: "You have been logged in successfully.",
+        variant: "default",
+      });
+    }
+  }, [loginMutation.isSuccess, toast]);
+
+  // Handle successful registration
+  React.useEffect(() => {
+    if (registerMutation.isSuccess) {
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created successfully.",
+        variant: "default",
+      });
+    }
+  }, [registerMutation.isSuccess, toast]);
+
   // If user is logged in, render nothing while redirect happens
   if (user) {
     return null;

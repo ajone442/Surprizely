@@ -1,7 +1,6 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "./hooks/use-auth";
 import HomePage from "@/pages/home-page";
 import AdminPage from "@/pages/admin-page";
@@ -12,6 +11,7 @@ import { ProtectedRoute } from "./lib/protected-route";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ForgotPasswordPage from "@/pages/forgot-password";
+import { Toaster } from "@/components/ui/toaster"; // Added Toaster import here
 
 function Router() {
   return (
@@ -36,8 +36,8 @@ function App() {
             <Router />
           </main>
           <Footer />
+          <Toaster /> {/* Toaster moved here */}
         </div>
-        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );
