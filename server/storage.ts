@@ -8,18 +8,15 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined>; // Added updateUser function
-
+  updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined>; 
   getProducts(): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product>;
   deleteProduct(id: number): Promise<void>;
-
   getWishlist(userId: number): Promise<Product[]>;
   addToWishlist(wishlist: InsertWishlist): Promise<void>;
   removeFromWishlist(userId: number, productId: number): Promise<void>;
-
   sessionStore: session.Store;
 }
 
@@ -40,8 +37,6 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
-
-    // Create initial admin user
     this.createUser({
       username: "admin",
       password: "admin123",
@@ -67,14 +62,13 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined> { // Added updateUser function
+  async updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined> { 
     const user = this.users.get(userId);
     if (!user) return undefined;
     const updatedUser = { ...user, ...data };
     this.users.set(userId, updatedUser);
     return updatedUser;
   }
-
 
   async getProducts(): Promise<Product[]> {
     return Array.from(this.products.values());
@@ -105,7 +99,6 @@ export class MemStorage implements IStorage {
 
   async deleteProduct(id: number): Promise<void> {
     this.products.delete(id);
-    // Remove from all wishlists
     for (const userWishlist of this.wishlist.values()) {
       userWishlist.delete(id);
     }
@@ -134,3 +127,34 @@ export class MemStorage implements IStorage {
 }
 
 export const storage = new MemStorage();
+
+// Placeholder for password validation function (requires a more robust solution)
+function validatePassword(password: string): boolean {
+  // Check for minimum length and at least one uppercase letter.  This is a basic example and should be improved for production.
+  return password.length >= 7 && /[A-Z]/.test(password);
+}
+
+// Placeholder for account management page (requires a full framework)
+// This is a extremely basic example and needs significant work to be useful.
+function AccountManagementPage() {
+    const [user, setUser] = React.useState<User | null>(null);
+    
+    React.useEffect(() => {
+        // Fetch user data from storage based on authentication
+    }, []);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Update user data in storage
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            {/* Basic Profile Information */}
+            <input type="text" placeholder="Name" />
+            <input type="email" placeholder="Email" />
+            {/* Update button and other elements here */}
+            <button>Update</button>
+        </form>
+    )
+}

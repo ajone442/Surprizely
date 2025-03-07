@@ -29,10 +29,17 @@ export const wishlist = pgTable("wishlist", {
     .references(() => products.id),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
+export const insertUserSchema = createInsertSchema(users)
+  .pick({
+    username: true,
+    password: true,
+  })
+  .extend({
+    password: z
+      .string()
+      .min(7, "Password must be at least 7 characters")
+      .regex(/[A-Z]/, "Password must contain at least one capital letter"),
+  });
 
 // Product schema with simplified price handling
 export const insertProductSchema = createInsertSchema(products)

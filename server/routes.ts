@@ -155,8 +155,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { password } = req.body;
 
-      if (!password || password.length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      // Validate password requirements
+      if (!password || password.length < 7) {
+        return res.status(400).json({ message: "Password must be at least 7 characters" });
+      }
+      
+      if (!/[A-Z]/.test(password)) {
+        return res.status(400).json({ message: "Password must contain at least one capital letter" });
       }
 
       const hashedPassword = await hashPassword(password);

@@ -3,19 +3,29 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, User } from "lucide-react";
+import { ArrowLeft, Save, User, Key, History, Shield, Mail, UserCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const passwordSchema = z.object({
+  password: z.string()
+    .min(7, "Password must be at least 7 characters")
+    .regex(/[A-Z]/, "Password must contain at least one capital letter"),
+});
 
 export default function AccountPage() {
   const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const { toast } = useToast();
 
   if (!user) {
     setLocation("/auth");
@@ -23,7 +33,7 @@ export default function AccountPage() {
   }
 
   const passwordForm = useForm({
-    resolver: zodResolver(insertUserSchema.pick({ password: true })),
+    resolver: zodResolver(passwordSchema),
     defaultValues: {
       password: "",
     },
@@ -78,47 +88,124 @@ export default function AccountPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-md mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <User className="mr-2 h-5 w-5" />
-                Profile Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="username">Username</Label>
-                  <Input id="username" value={user.username} disabled />
-                </div>
-                
-                <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)}>
+        <div className="max-w-3xl mx-auto">
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="grid grid-cols-3 mb-8">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="security">Security</TabsTrigger>
+              <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="profile">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <UserCircle className="mr-2 h-5 w-5" />
+                    Profile Information
+                  </CardTitle>
+                  <CardDescription>
+                    Manage your personal information
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="password">New Password</Label>
-                      <Input 
-                        id="password" 
-                        type="password" 
-                        {...passwordForm.register("password")} 
-                      />
+                      <Label htmlFor="username">Email Address</Label>
+                      <Input id="username" value={user.username} disabled />
                     </div>
                     
-                    {message && (
-                      <p className={message.includes("success") ? "text-green-500" : "text-red-500"}>
-                        {message}
-                      </p>
-                    )}
+                    <div>
+                      <Label htmlFor="joinedDate">Account Created</Label>
+                      <Input id="joinedDate" value="Recently" disabled />
+                    </div>
                     
-                    <Button type="submit" disabled={isSubmitting} className="w-full">
-                      {isSubmitting ? "Updating..." : "Update Password"}
-                      <Save className="ml-2 h-4 w-4" />
-                    </Button>
+                    <div>
+                      <Label htmlFor="accountType">Account Type</Label>
+                      <Input id="accountType" value={user.isAdmin ? "Administrator" : "User"} disabled />
+                    </div>
                   </div>
-                </form>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="security">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Shield className="mr-2 h-5 w-5" />
+                    Security Settings
+                  </CardTitle>
+                  <CardDescription>
+                    Update your password and manage security settings
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)}>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="password">New Password</Label>
+                        <Input 
+                          id="password" 
+                          type="password" 
+                          {...passwordForm.register("password")} 
+                        />
+                        {passwordForm.formState.errors.password && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {passwordForm.formState.errors.password.message}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Password must be at least 7 characters and include a capital letter
+                        </p>
+                      </div>
+                      
+                      {message && (
+                        <p className={message.includes("success") ? "text-green-500" : "text-red-500"}>
+                          {message}
+                        </p>
+                      )}
+                      
+                      <Button type="submit" disabled={isSubmitting} className="w-full">
+                        {isSubmitting ? "Updating..." : "Update Password"}
+                        <Key className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </form>
+                  
+                  <div className="mt-8 pt-6 border-t">
+                    <h3 className="font-medium mb-4 flex items-center">
+                      <History className="mr-2 h-4 w-4" />
+                      Recent Activity
+                    </h3>
+                    <div className="text-sm text-muted-foreground">
+                      <p>Last login: Just now</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="preferences">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <User className="mr-2 h-5 w-5" />
+                    Preferences
+                  </CardTitle>
+                  <CardDescription>
+                    Customize your account preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-muted-foreground">
+                      Preference settings will be available soon.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>

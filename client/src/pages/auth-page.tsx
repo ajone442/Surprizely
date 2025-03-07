@@ -7,15 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
 import { Gift } from "lucide-react";
+
+// Custom validation schema for password
+const passwordSchema = z.string().min(7).regex(/^(?=.*[A-Z])/, "Password must contain at least one uppercase letter and be at least 7 characters long");
+
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
 
   if (user) {
-    // Get the previous location from URL search params
     const params = new URLSearchParams(window.location.search);
     const redirect = params.get('redirect') || '/';
     setLocation(redirect);
@@ -31,7 +35,9 @@ export default function AuthPage() {
   });
 
   const registerForm = useForm({
-    resolver: zodResolver(insertUserSchema),
+    resolver: zodResolver(insertUserSchema.extend({
+      password: passwordSchema,
+    })),
     defaultValues: {
       username: "",
       password: "",
@@ -131,7 +137,16 @@ export default function AuthPage() {
                       {registerMutation.error?.message || "Registration failed. Please try again."}
                     </div>
                   )}
-                  <div className="h-4"></div>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="w-full"
+                    asChild
+                  >
+                    <Link href="/forgot-password">
+                      Forgot Password?
+                    </Link>
+                  </Button>
                 </form>
               </TabsContent>
             </Tabs>
