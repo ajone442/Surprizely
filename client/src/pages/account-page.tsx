@@ -1,29 +1,59 @@
+
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, User, Key, History, Shield, Mail, UserCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { insertUserSchema } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { ArrowLeft, User, Key, Settings } from "lucide-react";
+import { useLocation } from "wouter";
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from "@/components/ui/tabs";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage 
+} from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const emailSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
 
 const passwordSchema = z.object({
-  password: z.string()
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string()
     .min(7, "Password must be at least 7 characters")
     .regex(/[A-Z]/, "Password must contain at least one capital letter"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
+
+type EmailFormValues = z.infer<typeof emailSchema>;
+type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export default function AccountPage() {
   const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
+  const [isEmailSubmitting, setIsEmailSubmitting] = useState(false);
+  const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
   const { toast } = useToast();
 
   if (!user) {
@@ -31,38 +61,93 @@ export default function AccountPage() {
     return null;
   }
 
-  const passwordForm = useForm({
-    resolver: zodResolver(passwordSchema),
+  const emailForm = useForm<EmailFormValues>({
+    resolver: zodResolver(emailSchema),
     defaultValues: {
-      password: "",
+      email: user.username || "",
     },
   });
 
-  const handlePasswordChange = async (data: { password: string }) => {
-    setIsSubmitting(true);
-    setMessage("");
+  const passwordForm = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
 
+  const handleEmailChange = async (data: EmailFormValues) => {
+    setIsEmailSubmitting(true);
     try {
-      // You would need to implement this endpoint on the server
+      const response = await fetch("/api/account/email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: data.email }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Email updated successfully",
+        });
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Error",
+          description: errorData.message || "Failed to update email",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEmailSubmitting(false);
+    }
+  };
+
+  const handlePasswordChange = async (data: PasswordFormValues) => {
+    setIsPasswordSubmitting(true);
+    try {
       const response = await fetch("/api/account/password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ password: data.password }),
+        body: JSON.stringify({
+          currentPassword: data.currentPassword,
+          newPassword: data.newPassword,
+        }),
       });
 
       if (response.ok) {
-        setMessage("Password updated successfully");
+        toast({
+          title: "Success",
+          description: "Password updated successfully",
+        });
         passwordForm.reset();
       } else {
-        setMessage("Failed to update password");
+        const errorData = await response.json();
+        toast({
+          title: "Error",
+          description: errorData.message || "Failed to update password",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      setMessage("An error occurred");
-      console.error(error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
     } finally {
-      setIsSubmitting(false);
+      setIsPasswordSubmitting(false);
     }
   };
 
@@ -99,28 +184,51 @@ export default function AccountPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <UserCircle className="mr-2 h-5 w-5" />
+                    <User className="mr-2 h-5 w-5" />
                     Profile Information
                   </CardTitle>
                   <CardDescription>
-                    Manage your personal information
+                    Update your account profile information
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="username">Email Address</Label>
-                      <Input id="username" value={user.username} disabled />
-                    </div>
+                  <Form {...emailForm}>
+                    <form onSubmit={emailForm.handleSubmit(handleEmailChange)} className="space-y-6">
+                      <FormField
+                        control={emailForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email Address</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="email" placeholder="your@email.com" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" disabled={isEmailSubmitting}>
+                        {isEmailSubmitting ? "Updating..." : "Update Email"}
+                      </Button>
+                    </form>
+                  </Form>
 
-                    <div>
-                      <Label htmlFor="joinedDate">Account Created</Label>
-                      <Input id="joinedDate" value="Recently" disabled />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="accountType">Account Type</Label>
-                      <Input id="accountType" value={user.isAdmin ? "Administrator" : "User"} disabled />
+                  <div className="mt-8 pt-8 border-t">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Account Type</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Your account type and permissions
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">{user.isAdmin ? "Administrator" : "Customer"}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {user.isAdmin 
+                            ? "Full access to all features" 
+                            : "Standard user permissions"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -131,57 +239,63 @@ export default function AccountPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <Shield className="mr-2 h-5 w-5" />
+                    <Key className="mr-2 h-5 w-5" />
                     Security Settings
                   </CardTitle>
                   <CardDescription>
-                    Update your password and manage security settings
+                    Manage your account security
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)}>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="password">New Password</Label>
-                        <Input 
-                          id="password" 
-                          type="password" 
-                          {...passwordForm.register("password")} 
+                  <div className="space-y-8">
+                    <Form {...passwordForm}>
+                      <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)} className="space-y-6">
+                        <FormField
+                          control={passwordForm.control}
+                          name="currentPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Current Password</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="password" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                        {passwordForm.formState.errors.password && (
-                          <p className="text-red-500 text-sm mt-1">
-                            {passwordForm.formState.errors.password.message}
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Password must be at least 7 characters and contain at least one uppercase letter.
-                        </p>
-                      </div>
+                        <FormField
+                          control={passwordForm.control}
+                          name="newPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>New Password</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="password" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={passwordForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Confirm New Password</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="password" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button type="submit" disabled={isPasswordSubmitting}>
+                          {isPasswordSubmitting ? "Updating..." : "Update Password"}
+                        </Button>
+                      </form>
+                    </Form>
 
-                      <Button 
-                        type="submit" 
-                        className="w-full"
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? "Updating..." : "Update Password"}
-                      </Button>
-                    </div>
-                  </form>
-
-                  <div className="border-t pt-6 mt-6">
-                    <h3 className="text-lg font-medium mb-4">Security Options</h3>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium">Two-factor authentication</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Add an extra layer of security to your account
-                          </p>
-                        </div>
-                        <Button variant="outline" disabled>Coming Soon</Button>
-                      </div>
-
+                    <div className="pt-6 border-t">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium">Active sessions</h4>
@@ -201,7 +315,7 @@ export default function AccountPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <User className="mr-2 h-5 w-5" />
+                    <Settings className="mr-2 h-5 w-5" />
                     Preferences
                   </CardTitle>
                   <CardDescription>
@@ -210,9 +324,25 @@ export default function AccountPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Preference settings will be available soon.
-                    </p>
+                    <div className="border rounded-md p-4">
+                      <h4 className="font-medium mb-2">Email Notifications</h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Manage which notifications you receive via email.
+                      </p>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p>This feature will be available soon.</p>
+                      </div>
+                    </div>
+                    
+                    <div className="border rounded-md p-4">
+                      <h4 className="font-medium mb-2">Display Settings</h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Customize how the application appears to you.
+                      </p>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p>This feature will be available soon.</p>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

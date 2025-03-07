@@ -12,6 +12,7 @@ import { ProtectedRoute } from "./lib/protected-route";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ForgotPasswordPage from "@/pages/forgot-password";
+import AccountPage from "@/pages/account-page"; // Added import
 
 function Router() {
   return (
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/wishlist" component={WishlistPage} />
+      <Route path="/account" component={AccountPage} /> {/* Added route */}
       <Route component={NotFound} />
     </Switch>
   );
