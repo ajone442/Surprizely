@@ -1,6 +1,7 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "./hooks/use-auth";
 import HomePage from "@/pages/home-page";
 import AdminPage from "@/pages/admin-page";
@@ -36,8 +37,8 @@ function App() {
             <Router />
           </main>
           <Footer />
-          <Toaster /> {/* Toaster moved here */}
         </div>
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );

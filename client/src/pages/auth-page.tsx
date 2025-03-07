@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -10,13 +11,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
 import { Gift } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast"; // Added import for useToast
+import { useToast } from "@/hooks/use-toast"; // Use the correct import path
 
 // Custom validation schema for password
 import React from "react";
 
-const passwordSchema = z.string().min(7).regex(/^(?=.*[A-Z])/, "Password must contain at least one uppercase letter and be at least 7 characters long");
-
+const passwordSchema = z.string()
+  .min(7, "Password must be at least 7 characters")
+  .regex(/[A-Z]/, "Password must contain at least one capital letter");
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -57,7 +59,6 @@ export default function AuthPage() {
       toast({
         title: "Login Successful",
         description: "You have been logged in successfully.",
-        variant: "default",
       });
     }
   }, [loginMutation.isSuccess, toast]);
@@ -68,7 +69,6 @@ export default function AuthPage() {
       toast({
         title: "Registration Successful",
         description: "Your account has been created successfully.",
-        variant: "default",
       });
     }
   }, [registerMutation.isSuccess, toast]);
@@ -121,17 +121,19 @@ export default function AuthPage() {
                     className="w-full"
                     disabled={loginMutation.isPending}
                   >
-                    Login
+                    {loginMutation.isPending ? "Logging in..." : "Login"}
                   </Button>
+                  {loginMutation.isError && (
+                    <div className="text-destructive text-sm mt-2">
+                      {loginMutation.error?.message || "Login failed. Please check your credentials."}
+                    </div>
+                  )}
                   <Button
-                    type="button"
                     variant="link"
                     className="w-full"
                     asChild
                   >
-                    <Link href="/forgot-password">
-                      Forgot Password?
-                    </Link>
+                    <Link href="/forgot-password">Forgot password?</Link>
                   </Button>
                 </form>
               </TabsContent>
@@ -150,6 +152,11 @@ export default function AuthPage() {
                       type="email"
                       {...registerForm.register("username")}
                     />
+                    {registerForm.formState.errors.username && (
+                      <p className="text-destructive text-sm">
+                        {registerForm.formState.errors.username.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-password">Password</Label>
@@ -158,6 +165,11 @@ export default function AuthPage() {
                       type="password"
                       {...registerForm.register("password")}
                     />
+                    {registerForm.formState.errors.password && (
+                      <p className="text-destructive text-sm">
+                        {registerForm.formState.errors.password.message}
+                      </p>
+                    )}
                   </div>
                   <Button
                     type="submit"
@@ -172,33 +184,17 @@ export default function AuthPage() {
                     </div>
                   )}
                   <Button
-                    type="button"
                     variant="link"
                     className="w-full"
                     asChild
                   >
-                    <Link href="/forgot-password">
-                      Forgot Password?
-                    </Link>
+                    <Link href="/forgot-password">Forgot password?</Link>
                   </Button>
                 </form>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
-      </div>
-
-      <div className="hidden lg:flex flex-1 bg-primary/10 items-center justify-center p-12">
-        <div className="max-w-lg">
-          <div className="mb-8">
-            <Gift className="h-16 w-16 text-primary" />
-          </div>
-          <h1 className="text-4xl font-bold mb-4">Welcome to Gift Finder</h1>
-          <p className="text-lg text-muted-foreground">
-            Create an account to save your favorite gift ideas and get personalized
-            suggestions for your loved ones. Join our community of thoughtful gift-givers today!
-          </p>
-        </div>
       </div>
     </div>
   );
