@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -84,7 +83,8 @@ export default function AuthPage() {
         <Card className="w-full max-w-md mx-auto">
           <CardContent className="pt-6">
             <div className="flex justify-center mb-6">
-              <Gift className="h-12 w-12 text-primary" />
+              {/*<Gift className="h-12 w-12 text-primary" />*/} {/*Removed Gift Icon*/}
+              <h1 className="text-3xl font-bold">Suprizely</h1>
             </div>
 
             <Tabs defaultValue="login" className="space-y-6">
@@ -94,6 +94,34 @@ export default function AuthPage() {
               </TabsList>
 
               <TabsContent value="login" className="min-h-[240px]">
+                <div className="mb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2"
+                    onClick={() => {
+                      toast({
+                        title: "Google Sign In",
+                        description: "Google authentication will be implemented by your backend team.",
+                      });
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                      <g transform="matrix(1, 0, 0, 1, 0, 0)">
+                        <path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1Z" fill="#4285F4"></path>
+                      </g>
+                    </svg>
+                    Sign in with Google
+                  </Button>
+                </div>
+                <div className="relative mb-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or sign in with email</span>
+                  </div>
+                </div>
                 <form
                   onSubmit={loginForm.handleSubmit((data) =>
                     loginMutation.mutate(data)
@@ -139,6 +167,34 @@ export default function AuthPage() {
               </TabsContent>
 
               <TabsContent value="register" className="min-h-[240px]">
+                <div className="mb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2"
+                    onClick={() => {
+                      toast({
+                        title: "Google Sign In",
+                        description: "Google authentication will be implemented by your backend team.",
+                      });
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                      <g transform="matrix(1, 0, 0, 1, 0, 0)">
+                        <path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1Z" fill="#4285F4"></path>
+                      </g>
+                    </svg>
+                    Sign in with Google
+                  </Button>
+                </div>
+                <div className="relative mb-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or register with email</span>
+                  </div>
+                </div>
                 <form
                   onSubmit={registerForm.handleSubmit((data) =>
                     registerMutation.mutate(data)

@@ -30,7 +30,7 @@ export default function HomePage() {
       <header className="border-b">
         <div className="container mx-auto px-4 py-6">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-pink-600 text-transparent bg-clip-text">
-            Gift Finder
+            Suprizely
           </h1>
           <p className="mt-2 text-muted-foreground">
             Find the perfect gift for your loved ones

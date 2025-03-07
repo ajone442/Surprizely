@@ -9,12 +9,12 @@ export default function Footer() {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-primary">Gift Registry</h3>
+            <h3 className="text-lg font-semibold text-primary">Suprizely</h3>
             <p className="text-sm text-muted-foreground">
               Find the perfect gift for your loved ones with our curated selection
               of high-quality products.
             </p>
-            <p className="text-sm text-muted-foreground">© 2023 Gift Registry. All rights reserved.</p>
+            <p className="text-sm text-muted-foreground">© 2023 Suprizely. All rights reserved.</p>
             {user?.isAdmin && (
               <Link href="/admin">
                 <a className="inline-flex items-center text-sm text-primary hover:underline">

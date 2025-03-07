@@ -19,7 +19,7 @@ export default function Navigation() {
         <div className="flex pl-2">
           <Link href="/" className="flex items-center space-x-2">
             <Gift className="h-6 w-6" />
-            <span className="font-bold">Gift Finder</span>
+            <span className="font-bold">Suprizely</span>
           </Link>
         </div>
 
