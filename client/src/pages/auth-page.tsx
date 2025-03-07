@@ -12,20 +12,16 @@ import { insertUserSchema } from "@shared/schema";
 import { Gift } from "lucide-react";
 
 // Custom validation schema for password
+import React from "react";
+
 const passwordSchema = z.string().min(7).regex(/^(?=.*[A-Z])/, "Password must contain at least one uppercase letter and be at least 7 characters long");
 
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
-
-  if (user) {
-    const params = new URLSearchParams(window.location.search);
-    const redirect = params.get('redirect') || '/';
-    setLocation(redirect);
-    return null;
-  }
-
+  
+  // Initialize forms outside of any conditional to avoid hooks issues
   const loginForm = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
@@ -43,6 +39,20 @@ export default function AuthPage() {
       password: "",
     },
   });
+  
+  // Use effect for redirect instead of conditional return
+  React.useEffect(() => {
+    if (user) {
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect') || '/';
+      setLocation(redirect);
+    }
+  }, [user, setLocation]);
+  
+  // If user is logged in, render nothing while redirect happens
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center">
