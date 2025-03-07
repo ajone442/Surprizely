@@ -43,7 +43,7 @@ export default function AuthPage() {
     },
   });
 
-  // Use effect for redirect instead of conditional return
+  // Handle user redirect with useEffect
   React.useEffect(() => {
     if (user) {
       const params = new URLSearchParams(window.location.search);
@@ -72,7 +72,8 @@ export default function AuthPage() {
     }
   }, [registerMutation.isSuccess, toast]);
 
-  // If user is logged in, render nothing while redirect happens
+
+  // If user is logged in, render nothing while redirect happens - This section is now handled by useEffect
   if (user) {
     return null;
   }
