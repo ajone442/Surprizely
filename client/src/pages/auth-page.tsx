@@ -43,11 +43,11 @@ export default function AuthPage() {
     },
   });
 
-  // Handle user redirect with useEffect
+  // Handle redirection in useEffect instead of during render
   React.useEffect(() => {
     if (user) {
       const params = new URLSearchParams(window.location.search);
-      const redirect = params.get('redirect') || '/';
+      const redirect = params.get("redirect") || "/";
       setLocation(redirect);
     }
   }, [user, setLocation]);
