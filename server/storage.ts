@@ -129,32 +129,7 @@ export class MemStorage implements IStorage {
 export const storage = new MemStorage();
 
 // Placeholder for password validation function (requires a more robust solution)
-function validatePassword(password: string): boolean {
+export function validatePassword(password: string): boolean {
   // Check for minimum length and at least one uppercase letter.  This is a basic example and should be improved for production.
   return password.length >= 7 && /[A-Z]/.test(password);
-}
-
-// Placeholder for account management page (requires a full framework)
-// This is a extremely basic example and needs significant work to be useful.
-function AccountManagementPage() {
-    const [user, setUser] = React.useState<User | null>(null);
-    
-    React.useEffect(() => {
-        // Fetch user data from storage based on authentication
-    }, []);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Update user data in storage
-    }
-
-    return (
-        <form onSubmit={handleSubmit}>
-            {/* Basic Profile Information */}
-            <input type="text" placeholder="Name" />
-            <input type="email" placeholder="Email" />
-            {/* Update button and other elements here */}
-            <button>Update</button>
-        </form>
-    )
 }
