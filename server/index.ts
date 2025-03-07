@@ -48,6 +48,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Placeholder routes for account management
+app.put('/api/account/email', (req, res) => {
+  // Implement email update logic here
+  res.status(200).json({ message: 'Email updated successfully' });
+});
+
+app.put('/api/account/password', (req, res) => {
+  // Implement password update logic here
+  res.status(200).json({ message: 'Password updated successfully' });
+});
+
+
 (async () => {
   const server = await registerRoutes(app);
 

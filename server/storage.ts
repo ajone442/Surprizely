@@ -8,7 +8,10 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined>; 
+  updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined>;
+  updateUserEmail(userId: number, email: string): Promise<User | undefined>;
+  updateUserPassword(userId: number, password: string): Promise<User | undefined>;
+  verifyUserPassword(userId: number, password: string): Promise<boolean>;
   getProducts(): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
@@ -86,12 +89,33 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined> { 
+  async updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined> {
     const user = this.users.get(userId);
     if (!user) return undefined;
     const updatedUser = { ...user, ...data };
     this.users.set(userId, updatedUser);
     return updatedUser;
+  }
+
+  async updateUserEmail(userId: number, email: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    const updatedUser = { ...user, username: email };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async updateUserPassword(userId: number, password: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    const updatedUser = { ...user, password };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async verifyUserPassword(userId: number, password: string): Promise<boolean> {
+    const user = this.users.get(userId);
+    return user && user.password === password; // Placeholder - replace with secure comparison
   }
 
   async getProducts(): Promise<Product[]> {

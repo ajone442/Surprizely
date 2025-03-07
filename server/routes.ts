@@ -241,3 +241,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
 function getOpenAI() {
   return openai;
 }
+import { Express } from "express";
+import { storage } from "./storage";
+import { z } from "zod";
+import { hashPassword } from "./auth";
+
+export function setupAccountRoutes(app: Express) {
+  // Change email endpoint
+  app.post("/api/account/email", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const schema = z.object({
+      email: z.string().email("Invalid email address"),
+    });
+
+    try {
+      const { email } = schema.parse(req.body);
+      
+      // Check if email is already in use
+      const existingUser = await storage.getUserByUsername(email);
+      if (existingUser && existingUser.id !== req.user?.id) {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+      
+      // Update user email
+      const updatedUser = await storage.updateUserEmail(req.user?.id, email);
+      
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update email" });
+      }
+      
+      return res.status(200).json({ message: "Email updated successfully" });
+    } catch (error) {
+      console.error("Error updating email:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      return res.status(500).json({ message: "An error occurred" });
+    }
+  });
+
+  // Change password endpoint
+  app.post("/api/account/password", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const schema = z.object({
+      currentPassword: z.string(),
+      newPassword: z.string()
+        .min(7, "Password must be at least 7 characters")
+        .regex(/[A-Z]/, "Password must contain at least one capital letter"),
+    });
+
+    try {
+      const { currentPassword, newPassword } = schema.parse(req.body);
+      
+      // Verify current password (this would need to be implemented in auth.ts)
+      const passwordValid = await storage.verifyUserPassword(req.user?.id, currentPassword);
+      
+      if (!passwordValid) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+      
+      // Hash and update new password
+      const hashedPassword = await hashPassword(newPassword);
+      const updatedUser = await storage.updateUserPassword(req.user?.id, hashedPassword);
+      
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update password" });
+      }
+      
+      return res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error updating password:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      return res.status(500).json({ message: "An error occurred" });
+    }
+  });
+}

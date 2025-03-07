@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
@@ -95,7 +94,7 @@ export default function AccountPage() {
               <TabsTrigger value="security">Security</TabsTrigger>
               <TabsTrigger value="preferences">Preferences</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="profile">
               <Card>
                 <CardHeader>
@@ -113,12 +112,12 @@ export default function AccountPage() {
                       <Label htmlFor="username">Email Address</Label>
                       <Input id="username" value={user.username} disabled />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="joinedDate">Account Created</Label>
                       <Input id="joinedDate" value="Recently" disabled />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="accountType">Account Type</Label>
                       <Input id="accountType" value={user.isAdmin ? "Administrator" : "User"} disabled />
@@ -127,7 +126,7 @@ export default function AccountPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="security">
               <Card>
                 <CardHeader>
@@ -155,36 +154,49 @@ export default function AccountPage() {
                           </p>
                         )}
                         <p className="text-xs text-muted-foreground mt-1">
-                          Password must be at least 7 characters and include a capital letter
+                          Password must be at least 7 characters and contain at least one uppercase letter.
                         </p>
                       </div>
-                      
-                      {message && (
-                        <p className={message.includes("success") ? "text-green-500" : "text-red-500"}>
-                          {message}
-                        </p>
-                      )}
-                      
-                      <Button type="submit" disabled={isSubmitting} className="w-full">
+
+                      <Button 
+                        type="submit" 
+                        className="w-full"
+                        disabled={isSubmitting}
+                      >
                         {isSubmitting ? "Updating..." : "Update Password"}
-                        <Key className="ml-2 h-4 w-4" />
                       </Button>
                     </div>
                   </form>
-                  
-                  <div className="mt-8 pt-6 border-t">
-                    <h3 className="font-medium mb-4 flex items-center">
-                      <History className="mr-2 h-4 w-4" />
-                      Recent Activity
-                    </h3>
-                    <div className="text-sm text-muted-foreground">
-                      <p>Last login: Just now</p>
+
+                  <div className="border-t pt-6 mt-6">
+                    <h3 className="text-lg font-medium mb-4">Security Options</h3>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">Two-factor authentication</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Add an extra layer of security to your account
+                          </p>
+                        </div>
+                        <Button variant="outline" disabled>Coming Soon</Button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">Active sessions</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Manage your active login sessions
+                          </p>
+                        </div>
+                        <Button variant="outline" disabled>Coming Soon</Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="preferences">
               <Card>
                 <CardHeader>
