@@ -12,7 +12,6 @@ import { ProtectedRoute } from "./lib/protected-route";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ForgotPasswordPage from "@/pages/forgot-password";
-import { Toaster } from "@/components/ui/toaster"; // Added Toaster import here
 
 function Router() {
   return (
