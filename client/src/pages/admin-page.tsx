@@ -26,10 +26,13 @@ export default function AdminPage() {
     return data;
   }
 
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data } = useQuery<Product[]>({
     queryKey: ["/api/products"],
     queryFn: fetchProducts
   });
+  
+  // Ensure products is always an array
+  const products = Array.isArray(data) ? data : [];
 
   const handleDelete = async (id: number) => {
     try {
