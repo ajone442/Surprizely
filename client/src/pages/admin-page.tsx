@@ -26,15 +26,21 @@ export default function AdminPage() {
     return data;
   }
 
-  const { data } = useQuery<Product[]>({
+  const { data, refetch } = useQuery<Product[]>({
     queryKey: ["/api/products"],
     queryFn: fetchProducts,
-    refetchOnWindowFocus: true, // Added refetchOnWindowFocus
-    staleTime: 30000, // Added staleTime
+    refetchOnWindowFocus: true,
+    staleTime: 5000, // Reduced stale time
+    refetchInterval: 10000, // Added refetch interval
   });
 
-  // Ensure products is always an array
+  // Ensure products is always an array and refresh after mutations
   const products = Array.isArray(data) ? data : [];
+  
+  // Use effect to refetch when component loads
+  React.useEffect(() => {
+    refetch();
+  }, []);
 
   const handleDelete = async (id: number) => {
     try {

@@ -64,17 +64,17 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
-    
+
     // Create admin user with a hashed password
     this.createAdminUser();
   }
-  
+
   private async createAdminUser() {
     try {
       // Import hashPassword function from auth.ts
       const { hashPassword } = await import('./auth');
       const hashedPassword = await hashPassword("admin123");
-      
+
       this.createUser({
         username: "admin",
         password: hashedPassword,
@@ -136,7 +136,7 @@ export class MemStorage implements IStorage {
   async verifyUserPassword(userId: number, password: string): Promise<boolean> {
     const user = this.users.get(userId);
     if (!user) return false;
-    
+
     // Check if password is already hashed
     if (user.password.includes('.')) {
       // Password is hashed, use secure comparison
@@ -162,12 +162,18 @@ export class MemStorage implements IStorage {
     return this.products.get(id);
   }
 
-  async createProduct(insertProduct: InsertProduct): Promise<Product> {
+  async createProduct(product: InsertProduct): Promise<Product> {
     const id = this.currentProductId++;
-    const product: Product = { ...insertProduct, id, averageRating: 0, ratingCount: 0 };
-    this.products.set(id, product);
-    this.ratings.set(id, []);
-    return product;
+    const newProduct = {
+      id,
+      ...product,
+      price: parseInt(product.price),
+      averageRating: 0,
+      ratingCount: 0,
+    };
+    this.products.set(id, newProduct);
+    console.log("Created product in storage:", newProduct);
+    return newProduct;
   }
 
   async updateProduct(

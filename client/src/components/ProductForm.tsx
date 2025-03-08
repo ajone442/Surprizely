@@ -77,7 +77,12 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
         console.log("Added product:", response);
       }
 
+      // Force refetch products
       await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/products"] });
+      
+      form.reset(); // Reset the form after submission
+      
       toast({
         title: product ? "Product updated" : "Product created",
         description: product
@@ -104,14 +109,17 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
       const response = await apiRequest("POST", "/api/products", {
         productUrl: data.productUrl,
       });
-      console.log("Added product:", response);
+      console.log("Added product from URL:", response);
 
       toast({
         title: "Product added",
         description: "Successfully added product from URL",
       });
 
+      // Force refetch products
       await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/products"] });
+      
       urlForm.reset();
       onComplete();
     } catch (error) {
