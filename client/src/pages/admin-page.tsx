@@ -37,9 +37,13 @@ export default function AdminPage() {
     staleTime: 0, // Ensures data is always fetched
     refetchOnMount: true, // Always refetch when component mounts
     refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchInterval: 3000, // Refetch every 3 seconds to ensure updates
   });
 
   const products = Array.isArray(data) ? data : [];
+  
+  // Add debugging to check products data
+  console.log("Admin Dashboard Products:", products);
 
   // Auto refresh products every few seconds
   React.useEffect(() => {
@@ -221,7 +225,7 @@ export default function AdminPage() {
               Edit and delete product ratings
             </DialogDescription>
           </DialogHeader>
-          {selectedProductId && <RatingManagement productId={selectedProductId} />}
+          {selectedProductId && <RatingManagement productId={selectedProductId} onUpdate={() => refetch()} />}
         </DialogContent>
       </Dialog>
     </div>

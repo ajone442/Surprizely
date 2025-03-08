@@ -74,7 +74,6 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-  const [userRating, setUserRating] = useState<number>(0);
   const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
 
   const submitRating = async (rating: number) => {
@@ -136,24 +135,19 @@ export function ProductCard({ product }: ProductCardProps) {
           {product.description || "No description available"}
         </p>
         <div className="mt-2">
-          <Rating rating={product.averageRating || 0} readonly/>
-        </div>
-        {user && (
-          <div className="mt-4">
-            <div className="text-sm font-medium mb-1">Rate this product:</div>
-            <div className="flex items-center">
-              <Rating 
-                value={userRating} 
-                onChange={(newRating) => {
-                  setUserRating(newRating);
-                  submitRating(newRating);
-                }}
-                disabled={isRatingSubmitting}
-              />
-              {isRatingSubmitting && <span className="ml-2 text-xs">Submitting...</span>}
-            </div>
+          <div className="flex items-center">
+            <Rating 
+              value={product.averageRating || 0} 
+              readonly={!user}
+              onChange={(newRating) => {
+                submitRating(newRating);
+              }}
+              disabled={isRatingSubmitting}
+            />
+            {isRatingSubmitting && <span className="ml-2 text-xs">Submitting...</span>}
+            {!user && <span className="ml-2 text-xs text-muted-foreground">(Log in to rate)</span>}
           </div>
-        )}
+        </div>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between">
         <span className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
