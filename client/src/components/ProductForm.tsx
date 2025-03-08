@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -20,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Product } from "@shared/schema";
+import { Product, giftCategories } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +37,7 @@ const formSchema = z.object({
     message: "Price must be a positive number",
   }),
   // Product URL for scraping - optional
-  productUrl: z.string().url({ message: "Must be a valid URL" }).optional(),
+  productUrl: z.string().url({ message: "Must be a valid URL" }).optional().or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -61,6 +62,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
           affiliateLink: product.affiliateLink || "",
           category: product.category,
           price: product.price.toString(),
+          productUrl: "",
         }
       : {
           name: "",
@@ -76,35 +78,41 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   // Create or update mutation
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      console.log("Submitting product data:", values);
+      // Filter out empty productUrl if present
+      const cleanValues = {...values};
+      if (!cleanValues.productUrl) {
+        delete cleanValues.productUrl;
+      }
+      
+      console.log("Submitting product data:", cleanValues);
+      
       if (product) {
         // Update existing product
-        return apiRequest("PATCH", `/api/products/${product.id}`, values);
+        return apiRequest("PATCH", `/api/products/${product.id}`, cleanValues);
       } else {
         // Create new product
-        const response = await apiRequest("POST", "/api/products", values);
+        const response = await apiRequest("POST", "/api/products", cleanValues);
         console.log("Added product:", response);
         return response;
       }
     },
-    onSuccess: async () => {
-      // Reset form first to ensure clean state
-      form.reset(); 
-
-      // Clear the cache completely to ensure fresh data
-      queryClient.removeQueries({ queryKey: ["/api/products"] });
-
-      // Then invalidate and force a full refetch
-      await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      await queryClient.refetchQueries({ 
+    onSuccess: async (response) => {
+      console.log("Product created/updated successfully:", response);
+      
+      // Reset form
+      form.reset();
+      
+      // Force refresh products list
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.refetchQueries({ 
         queryKey: ["/api/products"],
-        exact: true,
         type: 'all'
       });
-
-      console.log("Product created/updated successfully");
+      
       // Call onComplete to trigger parent component refresh
-      if (onComplete) onComplete();
+      if (onComplete) {
+        onComplete();
+      }
 
       toast({
         title: product ? "Product updated" : "Product created",
@@ -125,43 +133,27 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
     mutation.mutate(values);
   };
 
-  // For loading from URL
-  const categories = [
-    "Electronics",
-    "Clothing",
-    "Home & Kitchen",
-    "Books",
-    "Toys",
-    "Beauty",
-    "Sports",
-    "Jewelry",
-    "Food",
-    "Other",
-  ];
-
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {!product && (
-          <div className="flex items-center space-x-2">
-            <Button
-              type="button"
-              variant={isUrlMode ? "default" : "outline"}
-              onClick={() => setIsUrlMode(false)}
-            >
-              Manual Entry
-            </Button>
-            <Button
-              type="button"
-              variant={isUrlMode ? "outline" : "default"}
-              onClick={() => setIsUrlMode(true)}
-            >
-              Import from URL
-            </Button>
-          </div>
-        )}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="flex space-x-2 mb-4">
+          <Button
+            type="button"
+            variant={isUrlMode ? "outline" : "default"}
+            onClick={() => setIsUrlMode(false)}
+          >
+            Manual Entry
+          </Button>
+          <Button
+            type="button"
+            variant={isUrlMode ? "default" : "outline"}
+            onClick={() => setIsUrlMode(true)}
+          >
+            Import from URL
+          </Button>
+        </div>
 
-        {isUrlMode && !product ? (
+        {isUrlMode ? (
           <FormField
             control={form.control}
             name="productUrl"
@@ -186,7 +178,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Product Name</FormLabel>
                   <FormControl>
                     <Input placeholder="Product name" {...field} />
                   </FormControl>
@@ -213,49 +205,53 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Price</FormLabel>
-                    <FormControl>
-                      <Input placeholder="9.99" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Price</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="29.99"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {giftCategories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

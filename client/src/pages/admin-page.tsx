@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Product } from "@shared/schema";
@@ -18,6 +17,7 @@ export default function AdminPage() {
   const [, setLocation] = useLocation();
   const [showRatings, setShowRatings] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [addingProduct, setAddingProduct] = useState(false); // Added state for adding new product
 
   // Fetch products
   const fetchProducts = async () => {
@@ -45,16 +45,16 @@ export default function AdminPage() {
   React.useEffect(() => {
     console.log("Setting up refetch interval");
     refetch();
-    
+
     // Check immediately first
     const initialRefetch = setTimeout(() => {
       refetch();
     }, 500);
-    
+
     const interval = setInterval(() => {
       refetch();
     }, 2000);
-    
+
     return () => {
       clearTimeout(initialRefetch);
       clearInterval(interval);
@@ -99,19 +99,22 @@ export default function AdminPage() {
   };
 
   const handleProductSubmit = () => {
-    console.log("Product form submitted, refreshing product list");
+    // This function is called when product form completes
     setEditingProduct(null);
-    
-    // Force immediate refetch
+    setAddingProduct(false);
+
+    console.log("Product form submitted, refreshing product list");
+
+    // Clear cache and force immediate refetch
     queryClient.removeQueries({ queryKey: ["/api/products"] });
     queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-    
+
+    // Immediate refetch
+    refetch();
+
+    // Double-check with a delay to ensure data is updated
     setTimeout(() => {
       refetch();
-      // Refetch again after a short delay to ensure everything is updated
-      setTimeout(() => {
-        refetch();
-      }, 1000);
     }, 500);
   };
 
@@ -144,6 +147,7 @@ export default function AdminPage() {
             <ProductForm
               product={editingProduct}
               onComplete={handleProductSubmit}
+              onAddingProduct={() => setAddingProduct(true)}
             />
           </div>
 

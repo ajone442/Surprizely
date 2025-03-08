@@ -15,13 +15,14 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data, isLoading } = useQuery<Product[]>({
+  const { data, isLoading, refetch } = useQuery<Product[]>({
     queryKey: ["/api/products"],
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    staleTime: 10000, // Refetch after 10 seconds
+    staleTime: 1000, // Consider data stale after 1 second
+    refetchInterval: 5000, // Refresh every 5 seconds
   });
-  
+
   // Ensure products is always an array
   const products = Array.isArray(data) ? data : [];
 
@@ -31,6 +32,12 @@ export default function HomePage() {
                          product.description.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  //This useEffect will handle the initial fetch and subsequent refreshes.
+  React.useEffect(() => {
+    refetch();
+  }, [refetch]);
+
 
   return (
     <div className="min-h-screen bg-background">
