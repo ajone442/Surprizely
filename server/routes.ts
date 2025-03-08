@@ -176,18 +176,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      // If OpenAI API key is not set, return a helpful error
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({
+          message: "AI features are not available",
+          error: "OpenAI API key is not configured. Please set up your API key in Secrets."
+        });
+      }
+
       const openai = getOpenAI();
 
+      // Enhanced system prompt for more personalized recommendations
       const completion = await openai.chat.completions.create({
         messages: [
           {
             role: "system",
-            content: `You are a gift recommendation assistant for an online store. 
-            When given product data and user preferences, analyze both to match the ideal products.
-            Consider all user preferences including relationship, interests, and budget.
-            If products contain specific details about materials, features, or style, use these to make better matches.
-            Always return your response as a JSON object with a "recommendations" array containing matching products.
-            Each recommendation should include the original product data plus an "explanation" field explaining why this product matches.`,
+            content: `You are a gift recommendation assistant for an online store called Gift Finder.
+            
+            Your goal is to help users find the perfect gift by understanding their needs and matching them with products from our catalog.
+            
+            When analyzing product data:
+            1. Consider the relationship between the gift giver and recipient
+            2. Match product categories to the recipient's interests
+            3. Filter by price range according to the user's budget
+            4. Consider special occasions if mentioned
+            
+            If a user asks a question unrelated to gift recommendations, politely redirect them to gift-related topics.
+            
+            When recommending products:
+            - Be conversational and friendly
+            - Give 2-3 specific product recommendations with reasoning
+            - Mention key features, price, and why it would make a good gift
+            - Format your response in a readable way with product names in bold
+            
+            If you need more information from the user, ask clear follow-up questions to better understand their needs.`,
           },
           {
             role: "user",
@@ -195,6 +217,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ],
         model: "gpt-3.5-turbo",
+        temperature: 0.7,
+        max_tokens: 800,
       });
 
       res.json({ message: completion.choices[0].message.content });
