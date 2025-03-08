@@ -1,91 +1,102 @@
+
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Product } from "@shared/schema";
 import ProductForm from "@/components/ProductForm";
-import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Pencil, Trash2, ArrowLeft, Star } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RatingManagement } from "@/components/RatingManagement"; // Placeholder component
-
+import { useMutation } from "@tanstack/react-query";
 
 export default function AdminPage() {
-  const { logoutMutation } = useAuth();
   const { toast } = useToast();
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [, setLocation] = useLocation();
   const [showRatings, setShowRatings] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState(null);
-  const [addingProduct, setAddingProduct] = useState(false); // Added state for adding product
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
+  // Fetch products
   const fetchProducts = async () => {
     const data = await apiRequest("GET", "/api/products");
+    console.log("Fetched products:", data);
     return data;
-  }
+  };
 
-  const { data, refetch } = useQuery<Product[]>({
+  const { data, isLoading, refetch } = useQuery<Product[]>({
     queryKey: ["/api/products"],
     queryFn: fetchProducts,
-    staleTime: 0, // Consider data always stale to force refetches
+    staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
 
-  // Ensure products is always an array and refresh after mutations
   const products = Array.isArray(data) ? data : [];
 
-  // Use effect to refetch when component loads
+  // Auto refresh products every few seconds
   React.useEffect(() => {
-    // Refetch products when component mounts
+    console.log("Setting up refetch interval");
     refetch();
-
-    // Set up interval to periodically check for updates
+    
     const interval = setInterval(() => {
       refetch();
-    }, 3000);
-
-    // Clean up interval on unmount
+    }, 2000);
+    
     return () => clearInterval(interval);
   }, [refetch]);
 
-  const handleDelete = async (id: number) => {
-    try {
-      await apiRequest("DELETE", `/api/products/${id}`);
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/products/${id}`),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       toast({
         title: "Product deleted",
         description: "The product has been successfully deleted.",
       });
-    } catch (error) {
+    },
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to delete product",
         variant: "destructive",
       });
-    }
+    },
+  });
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/logout"),
+    onSuccess: () => {
+      setLocation("/login");
+    },
+  });
+
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id);
   };
 
   const handleEditRatings = (productId: number) => {
-    setEditingProduct(null); //Added to prevent conflicting states
+    setEditingProduct(null);
     setSelectedProductId(productId);
     setShowRatings(true);
   };
 
-  // This function is called when product form completes
   const handleProductSubmit = () => {
+    console.log("Product form submitted, refreshing product list");
     setEditingProduct(null);
-    // Force immediate refetch after product submission
-    refetch();
-    // Add a small delay and refetch again to ensure data is updated
+    
+    // Force immediate refetch
+    queryClient.removeQueries({ queryKey: ["/api/products"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+    
     setTimeout(() => {
       refetch();
     }, 500);
-  }
-
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,76 +126,82 @@ export default function AdminPage() {
             </h2>
             <ProductForm
               product={editingProduct}
-              onComplete={handleProductSubmit} //Corrected the onComplete prop
+              onComplete={handleProductSubmit}
             />
           </div>
 
           <div>
-            <h2 className="text-2xl font-semibold mb-4">Products</h2>
-            <div className="space-y-4">
-              {products.map((product) => (
-                <Card key={product.id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div>
-                      <h3 className="font-semibold">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {product.category} - ${product.price}
-                      </p>
+            <h2 className="text-2xl font-semibold mb-4">Manage Products</h2>
+            {isLoading ? (
+              <div className="text-center py-8">Loading products...</div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No products available. Add a product to get started.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {products.map((product) => (
+                  <div
+                    key={product.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div className="flex items-center gap-4">
+                      {product.imageUrl && (
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="w-16 h-16 object-cover rounded-md"
+                        />
+                      )}
+                      <div>
+                        <h3 className="font-semibold">{product.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          ${parseFloat(String(product.price)).toFixed(2)} - {product.category}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <Button
-                        variant="outline"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditRatings(product.id)}
+                      >
+                        <Star className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
                         size="icon"
                         onClick={() => setEditingProduct(product)}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
-                        variant="destructive"
+                        variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(product.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        onClick={() => handleEditRatings(product.id)}
-                      >
-                        <Star className="h-4 w-4" />
-                      </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        {showRatings && selectedProductId && (
-          <Dialog open={true} onOpenChange={() => setShowRatings(false)}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Rating Management</DialogTitle>
-                <DialogDescription>
-                  Manage customer ratings for this product.
-                </DialogDescription>
-              </DialogHeader>
-              <RatingManagement 
-                productId={selectedProductId} 
-                onUpdate={fetchProducts}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {(editingProduct) && (
-          <Dialog open={true} onOpenChange={() => {
-            setEditingProduct(null);
-          }}>
-            {/*Existing Dialog Content remains here*/}
-          </Dialog>
-        )}
       </main>
+
+      <Dialog open={showRatings} onOpenChange={setShowRatings}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Manage Ratings</DialogTitle>
+            <DialogDescription>
+              View and moderate user ratings for this product.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedProductId && <RatingManagement productId={selectedProductId} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

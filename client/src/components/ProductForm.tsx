@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProductSchema, giftCategories, type Product } from "@shared/schema";
@@ -15,8 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import * as React from 'react';
+import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ProductFormProps {
@@ -29,6 +29,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isParsingUrl, setIsParsingUrl] = useState(false);
 
+  // Form for manual product entry
   const form = useForm({
     resolver: zodResolver(insertProductSchema),
     defaultValues: {
@@ -41,7 +42,14 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
     },
   });
 
-  // Set form values when product data is available
+  // Form for URL parsing
+  const urlForm = useForm({
+    defaultValues: {
+      productUrl: "",
+    },
+  });
+
+  // Set form values when product changes
   React.useEffect(() => {
     if (product) {
       form.reset({
@@ -55,73 +63,41 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
     }
   }, [product, form]);
 
-  const urlForm = useForm({
-    defaultValues: {
-      productUrl: "",
-    },
-  });
-
-  const onSubmit = async (data: any) => {
+  // Submit handler for manual product entry
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
     console.log("Submitting product data:", data);
     
-    // Ensure all required fields have values
-    if (!data.name || !data.price || !data.imageUrl || !data.affiliateLink) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill all required fields: name, price, image URL, and affiliate link",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-    
-    // Ensure category is set
-    if (!data.category) {
-      data.category = "Electronics"; // Default category if none selected
-    }
-    
     try {
-      // Send price as string without conversion
-      const dataToSubmit = {
-        ...data,
-        price: data.price,
-      };
-
+      let response;
+      
       if (product) {
-        await apiRequest("PATCH", `/api/products/${product.id}`, dataToSubmit);
+        // Update existing product
+        response = await apiRequest("PATCH", `/api/products/${product.id}`, data);
+        console.log("Updated product:", response);
       } else {
-        const response = await apiRequest("POST", "/api/products", dataToSubmit);
+        // Create new product
+        response = await apiRequest("POST", `/api/products`, data);
         console.log("Added product:", response);
       }
 
-      // Reset form first to ensure clean state
-      form.reset(); 
+      // Clear form first
+      form.reset();
       
-      // Clear the cache completely to ensure fresh data
+      // Clear cache and force refetch
       queryClient.removeQueries({ queryKey: ["/api/products"] });
-      
-      // Then invalidate and force a full refetch
       await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      await queryClient.refetchQueries({ 
-        queryKey: ["/api/products"],
-        exact: true,
-        type: 'all'
-      });
       
-      console.log("Product created/updated successfully");
-      // Call onComplete to trigger parent component refresh
-      if (onComplete) onComplete();
-
+      // Success toast
       toast({
         title: product ? "Product updated" : "Product created",
         description: product
           ? "The product has been successfully updated."
           : "The product has been successfully created.",
       });
+      
+      // Notify parent component
       if (onComplete) onComplete();
-      form.reset();
-      //if (addMode === "url") setProductUrl(""); //addMode is not defined in this scope.
     } catch (error) {
       console.error("Product submission error:", error);
       toast({
@@ -134,6 +110,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
     }
   };
 
+  // Submit handler for URL parsing
   const handleUrlSubmit = async (data: { productUrl: string }) => {
     try {
       setIsParsingUrl(true);
@@ -148,11 +125,11 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
       });
 
       // Force refetch products
+      queryClient.removeQueries({ queryKey: ["/api/products"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/products"] });
 
       urlForm.reset();
-      onComplete();
+      if (onComplete) onComplete();
     } catch (error) {
       toast({
         title: "Error",
@@ -182,7 +159,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Product Description</Label>
             <Textarea
               id="description"
               placeholder="Enter product description"
@@ -197,12 +174,8 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
             <Label htmlFor="price">Price</Label>
             <Input
               id="price"
-              type="text"
-              placeholder="Enter price (e.g. $12.50, Free, etc.)"
-              {...form.register("price", {
-                setValueAs: (value) => (value === "" ? undefined : value),
-                required: "Price is required",
-              })}
+              placeholder="Enter price"
+              {...form.register("price")}
             />
             {form.formState.errors.price && (
               <p className="text-sm text-destructive">{form.formState.errors.price.message}</p>
@@ -282,20 +255,20 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
           <TabsTrigger value="manual">Manual Entry</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="url" className="space-y-4">
-          <form onSubmit={urlForm.handleSubmit(handleUrlSubmit)} className="space-y-4">
+        <TabsContent value="url">
+          <form onSubmit={urlForm.handleSubmit(handleUrlSubmit)} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="productUrl">Product URL</Label>
               <Input
                 id="productUrl"
                 placeholder="Paste Amazon or Etsy product URL"
                 {...urlForm.register("productUrl")}
-                className="w-full"
               />
-              <p className="text-sm text-muted-foreground">
-                Paste a product URL from Amazon or Etsy to automatically import product details
+              <p className="text-xs text-muted-foreground">
+                We'll automatically extract product details from the URL.
               </p>
             </div>
+
             <Button type="submit" disabled={isParsingUrl} className="w-full">
               {isParsingUrl && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add Product from URL
@@ -318,7 +291,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Product Description</Label>
               <Textarea
                 id="description"
                 placeholder="Enter product description"
@@ -333,13 +306,8 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
               <Label htmlFor="price">Price</Label>
               <Input
                 id="price"
-                type="text"
-                inputMode="numeric"
                 placeholder="Enter price"
-                {...form.register("price", {
-                  setValueAs: (value) => (value === "" ? undefined : value),
-                  required: "Price is required",
-                })}
+                {...form.register("price")}
               />
               {form.formState.errors.price && (
                 <p className="text-sm text-destructive">{form.formState.errors.price.message}</p>
@@ -394,7 +362,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
 
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {product ? "Update Product" : "Create Product"}
+              Create Product
             </Button>
           </form>
         </TabsContent>
