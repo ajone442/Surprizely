@@ -73,10 +73,11 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
       if (product) {
         await apiRequest("PATCH", `/api/products/${product.id}`, dataToSubmit);
       } else {
-        await apiRequest("POST", "/api/products", dataToSubmit);
+        const response = await apiRequest("POST", "/api/products", dataToSubmit);
+        console.log("Added product:", response);
       }
 
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       toast({
         title: product ? "Product updated" : "Product created",
         description: product
@@ -100,16 +101,17 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   const handleUrlSubmit = async (data: { productUrl: string }) => {
     try {
       setIsParsingUrl(true);
-      await apiRequest("POST", "/api/products", {
+      const response = await apiRequest("POST", "/api/products", {
         productUrl: data.productUrl,
       });
+      console.log("Added product:", response);
 
       toast({
         title: "Product added",
         description: "Successfully added product from URL",
       });
 
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       urlForm.reset();
       onComplete();
     } catch (error) {

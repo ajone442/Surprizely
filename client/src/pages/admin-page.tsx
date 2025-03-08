@@ -28,9 +28,11 @@ export default function AdminPage() {
 
   const { data } = useQuery<Product[]>({
     queryKey: ["/api/products"],
-    queryFn: fetchProducts
+    queryFn: fetchProducts,
+    refetchOnWindowFocus: true, // Added refetchOnWindowFocus
+    staleTime: 30000, // Added staleTime
   });
-  
+
   // Ensure products is always an array
   const products = Array.isArray(data) ? data : [];
 
