@@ -1,4 +1,3 @@
-
 import { Product } from "@shared/schema";
 import {
   Card,
@@ -15,6 +14,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Rating } from "./Rating";
+import { useState } from 'react';
 
 interface ProductCardProps {
   product: Product;
@@ -74,6 +74,38 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
+  const [userRating, setUserRating] = useState<number>(0);
+  const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
+
+  const submitRating = async (rating: number) => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to rate products",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsRatingSubmitting(true);
+    try {
+      await apiRequest("POST", `/api/ratings/${product.id}`, { rating });
+      toast({
+        title: "Rating Submitted",
+        description: "Thank you for your feedback!"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit rating",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRatingSubmitting(false);
+    }
+  };
+
   return (
     <Card className="overflow-hidden h-full flex flex-col">
       {product.imageUrl && (
@@ -104,8 +136,24 @@ export function ProductCard({ product }: ProductCardProps) {
           {product.description || "No description available"}
         </p>
         <div className="mt-2">
-          <Rating rating={product.averageRating || 0} />
+          <Rating rating={product.averageRating || 0} readonly/>
         </div>
+        {user && (
+          <div className="mt-4">
+            <div className="text-sm font-medium mb-1">Rate this product:</div>
+            <div className="flex items-center">
+              <Rating 
+                value={userRating} 
+                onChange={(newRating) => {
+                  setUserRating(newRating);
+                  submitRating(newRating);
+                }}
+                disabled={isRatingSubmitting}
+              />
+              {isRatingSubmitting && <span className="ml-2 text-xs">Submitting...</span>}
+            </div>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between">
         <span className="text-xs uppercase tracking-wider font-medium text-muted-foreground">

@@ -1,27 +1,44 @@
-
-import { Star } from "lucide-react";
+import React from "react";
+import { Star, StarHalf } from "lucide-react";
 
 interface RatingProps {
-  rating: number;
-  max?: number;
+  value: number;
+  readonly?: boolean;
+  onChange?: (rating: number) => void;
+  disabled?: boolean;
 }
 
-export function Rating({ rating, max = 5 }: RatingProps) {
+export function Rating({ value = 0, readonly = false, onChange, disabled = false }: RatingProps) {
+  const filledStars = Math.floor(value);
+  const hasHalfStar = value - filledStars >= 0.5;
+
+  const renderStar = (index: number) => {
+    if (index < filledStars) {
+      return <Star className="fill-primary text-primary h-4 w-4" />;
+    } else if (index === filledStars && hasHalfStar) {
+      return <StarHalf className="fill-primary text-primary h-4 w-4" />;
+    } else {
+      return <Star className="text-muted-foreground h-4 w-4" />;
+    }
+  };
+
+  const handleClick = (index: number) => {
+    if (readonly || disabled || !onChange) return;
+    onChange(index + 1); // Add 1 to convert from 0-based index to 1-5 rating
+  };
+
   return (
-    <div className="flex items-center">
-      {Array.from({ length: max }).map((_, i) => (
-        <Star
-          key={i}
-          className={`h-4 w-4 ${
-            i < Math.round(rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-          }`}
-        />
-      ))}
-      {rating > 0 && (
-        <span className="ml-1 text-xs text-muted-foreground">
-          {rating.toFixed(1)}
+    <div className={`flex ${disabled ? 'opacity-50' : ''}`}>
+      {[0, 1, 2, 3, 4].map((index) => (
+        <span 
+          key={index} 
+          className={readonly || disabled ? "" : "cursor-pointer hover:scale-110 transition-transform"}
+          onClick={() => handleClick(index)}
+          title={`${index + 1} star${index === 0 ? '' : 's'}`}
+        >
+          {renderStar(index)}
         </span>
-      )}
+      ))}
     </div>
   );
 }
