@@ -64,11 +64,31 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
-    this.createUser({
-      username: "admin",
-      password: "admin123",
-      isAdmin: true,
-    } as InsertUser);
+    
+    // Create admin user with a hashed password
+    this.createAdminUser();
+  }
+  
+  private async createAdminUser() {
+    try {
+      // Import hashPassword function from auth.ts
+      const { hashPassword } = await import('./auth');
+      const hashedPassword = await hashPassword("admin123");
+      
+      this.createUser({
+        username: "admin",
+        password: hashedPassword,
+        isAdmin: true,
+      } as InsertUser);
+    } catch (error) {
+      console.error("Failed to create admin user with hashed password:", error);
+      // Fallback to plain text password if hashing fails
+      this.createUser({
+        username: "admin",
+        password: "admin123",
+        isAdmin: true,
+      } as InsertUser);
+    }
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -115,7 +135,23 @@ export class MemStorage implements IStorage {
 
   async verifyUserPassword(userId: number, password: string): Promise<boolean> {
     const user = this.users.get(userId);
-    return user && user.password === password; // Placeholder - replace with secure comparison
+    if (!user) return false;
+    
+    // Check if password is already hashed
+    if (user.password.includes('.')) {
+      // Password is hashed, use secure comparison
+      try {
+        // Import comparePasswords function from auth.ts
+        const { comparePasswords } = await import('./auth');
+        return await comparePasswords(password, user.password);
+      } catch (error) {
+        console.error("Error comparing passwords:", error);
+        return false;
+      }
+    } else {
+      // Legacy password comparison (plain text)
+      return user.password === password;
+    }
   }
 
   async getProducts(): Promise<Product[]> {
