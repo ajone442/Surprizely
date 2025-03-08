@@ -65,7 +65,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   });
 
   // This ensures the form updates when the product prop changes
-  useEffect(() => {
+  React.useEffect(() => {
     if (product) {
       form.reset({
         name: product.name,
