@@ -1,75 +1,62 @@
-
-import React from "react";
-import { Helmet } from "react-helmet";
+import React from 'react';
 import { Container } from "@/components/ui/container";
 
-const TermsPage = () => {
+export default function TermsPage() {
   return (
-    <>
-      <Helmet>
-        <title>Terms of Service | Suprizely</title>
-      </Helmet>
-      <Container className="py-12">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">Terms of Service</h1>
-          <p className="text-sm text-muted-foreground mb-6">Last Updated: {new Date().toLocaleDateString()}</p>
-          
-          <div className="prose prose-slate dark:prose-invert">
-            <p>
-              Welcome to Suprizely. Please read these Terms of Service ("Terms") carefully before using our website.
-            </p>
-            
-            <h2 className="text-xl font-semibold mt-8 mb-4">1. Agreement to Terms</h2>
-            <p>
-              By accessing our website, you agree to be bound by these Terms and all applicable laws and regulations. 
-              If you do not agree with any of these terms, you are prohibited from using or accessing this site.
-            </p>
-            
-            <h2 className="text-xl font-semibold mt-8 mb-4">2. Use License</h2>
-            <p>
-              Permission is granted to temporarily download one copy of the materials on Suprizely's website for personal, 
-              non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under 
-              this license you may not:
-            </p>
-            <ul className="list-disc pl-6 mb-6">
-              <li>Modify or copy the materials</li>
-              <li>Use the materials for any commercial purpose</li>
-              <li>Attempt to decompile or reverse engineer any software contained on Suprizely's website</li>
-              <li>Remove any copyright or other proprietary notations from the materials</li>
-              <li>Transfer the materials to another person or "mirror" the materials on any other server</li>
-            </ul>
-            
-            <h2 className="text-xl font-semibold mt-8 mb-4">3. Disclaimer</h2>
-            <p>
-              The materials on Suprizely's website are provided on an 'as is' basis. Suprizely makes no warranties, 
-              expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, 
-              implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement 
-              of intellectual property or other violation of rights.
-            </p>
-            
-            <h2 className="text-xl font-semibold mt-8 mb-4">4. Limitations</h2>
-            <p>
-              In no event shall Suprizely or its suppliers be liable for any damages (including, without limitation, 
-              damages for loss of data or profit, or due to business interruption) arising out of the use or inability 
-              to use the materials on Suprizely's website, even if Suprizely or a Suprizely authorized representative 
-              has been notified orally or in writing of the possibility of such damage.
-            </p>
-            
-            <h2 className="text-xl font-semibold mt-8 mb-4">5. Governing Law</h2>
-            <p>
-              These Terms shall be governed by and construed in accordance with the laws, and you irrevocably submit 
-              to the exclusive jurisdiction of the courts in that location.
-            </p>
-            
-            <h2 className="text-xl font-semibold mt-8 mb-4">Contact Us</h2>
-            <p>
-              If you have any questions about these Terms, please contact us at legal@suprizely.com.
-            </p>
-          </div>
-        </div>
-      </Container>
-    </>
-  );
-};
+    <Container className="py-12">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Terms of Service</h1>
 
-export default TermsPage;
+        <div className="prose prose-lg">
+          <p className="mb-4">
+            Last Updated: November 15, 2023
+          </p>
+
+          <p className="mb-4">
+            Please read these Terms of Service carefully before using the Suprizely website.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">1. Agreement to Terms</h2>
+
+          <p className="mb-4">
+            By accessing or using our website, you agree to be bound by these Terms of Service and our Privacy Policy.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">2. Use of Our Services</h2>
+
+          <p className="mb-4">
+            You may use our services only as permitted by these terms and applicable laws and regulations.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">3. User Accounts</h2>
+
+          <p className="mb-4">
+            To access certain features of our website, you may need to create an account. You are responsible for maintaining the confidentiality of your account information and for all activities under your account.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">4. Purchases and Payments</h2>
+
+          <p className="mb-4">
+            By making a purchase through our website, you agree to pay all charges in full by the payment method you specified. You represent and warrant that you have the legal right to use any payment method provided.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">5. Changes to Terms</h2>
+
+          <p className="mb-4">
+            We may revise and update these Terms of Service from time to time at our sole discretion. All changes are effective when posted, and your continued use of the website following the posting of revised Terms of Service means you accept the changes.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">6. Contact Us</h2>
+
+          <p className="mb-4">
+            If you have any questions about these Terms of Service, please contact us at:
+          </p>
+
+          <p className="mb-4">
+            <a href="mailto:support@suprizely.com" className="text-primary hover:underline">support@suprizely.com</a>
+          </p>
+        </div>
+      </div>
+    </Container>
+  );
+}

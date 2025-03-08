@@ -1,68 +1,56 @@
-
-import React from "react";
-import { Helmet } from "react-helmet";
+import React from 'react';
 import { Container } from "@/components/ui/container";
 
-const PrivacyPage = () => {
+export default function PrivacyPage() {
   return (
-    <>
-      <Helmet>
-        <title>Privacy Policy | Suprizely</title>
-      </Helmet>
-      <Container className="py-12">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
-          <p className="text-sm text-muted-foreground mb-6">Last Updated: {new Date().toLocaleDateString()}</p>
-          
-          <div className="prose prose-slate dark:prose-invert">
-            <p>
-              At Suprizely, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, 
-              and safeguard your information when you visit our website.
-            </p>
-            
-            <h2 className="text-xl font-semibold mt-8 mb-4">Information We Collect</h2>
-            <p>
-              We collect information that you voluntarily provide to us when you register on the website, 
-              express interest in obtaining information about us or our products, when you participate in activities 
-              on the website, or otherwise when you contact us.
-            </p>
-            <p>
-              The personal information that we collect depends on the context of your interactions with us and 
-              the website, the choices you make, and the products and features you use. The personal information 
-              we collect may include the following:
-            </p>
-            <ul className="list-disc pl-6 mb-6">
-              <li>Name and contact data</li>
-              <li>Credentials</li>
-              <li>Payment data</li>
-              <li>Location data</li>
-            </ul>
-            
-            <h2 className="text-xl font-semibold mt-8 mb-4">How We Use Your Information</h2>
-            <p>
-              We use personal information collected via our website for a variety of business purposes described below:
-            </p>
-            <ul className="list-disc pl-6 mb-6">
-              <li>To facilitate account creation and login process</li>
-              <li>To provide you with targeted advertising or marketing communications</li>
-              <li>To manage user accounts</li>
-              <li>To process your financial transactions</li>
-              <li>To protect our services</li>
-              <li>To respond to user inquiries/offer support to users</li>
-            </ul>
-            
-            <h2 className="text-xl font-semibold mt-8 mb-4">Contact Us</h2>
-            <p>
-              If you have questions or comments about this Privacy Policy, please contact us at:
-            </p>
-            <p className="mt-2">
-              <strong>Email:</strong> privacy@suprizely.com
-            </p>
-          </div>
-        </div>
-      </Container>
-    </>
-  );
-};
+    <Container className="py-12">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
 
-export default PrivacyPage;
+        <div className="prose prose-lg">
+          <p className="mb-4">
+            Last Updated: November 15, 2023
+          </p>
+
+          <p className="mb-4">
+            At Suprizely, we take your privacy seriously. This Privacy Policy describes how we collect, use, and share information about you when you use our website.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">Information We Collect</h2>
+
+          <p className="mb-4">
+            We collect information you provide directly to us, such as when you create an account, make a purchase, contact customer support, or otherwise communicate with us.
+          </p>
+
+          <p className="mb-4">
+            This information may include your name, email address, postal address, phone number, and payment information.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">How We Use Your Information</h2>
+
+          <p className="mb-4">
+            We use the information we collect to:
+          </p>
+
+          <ul className="list-disc pl-6 mb-6">
+            <li className="mb-2">Provide, maintain, and improve our services</li>
+            <li className="mb-2">Process transactions and send related information</li>
+            <li className="mb-2">Send you technical notices, updates, and administrative messages</li>
+            <li className="mb-2">Respond to your comments and questions</li>
+            <li className="mb-2">Personalize your experience on our website</li>
+          </ul>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">Contact Us</h2>
+
+          <p className="mb-4">
+            If you have any questions about this Privacy Policy, please contact us at:
+          </p>
+
+          <p className="mb-4">
+            <a href="mailto:support@suprizely.com" className="text-primary hover:underline">support@suprizely.com</a>
+          </p>
+        </div>
+      </div>
+    </Container>
+  );
+}

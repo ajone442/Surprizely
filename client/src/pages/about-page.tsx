@@ -1,58 +1,41 @@
-
-import React from "react";
-import { Helmet } from "react-helmet";
+import React from 'react';
 import { Container } from "@/components/ui/container";
 
-const AboutPage = () => {
+export default function AboutPage() {
   return (
-    <>
-      <Helmet>
-        <title>About Us | Suprizely</title>
-      </Helmet>
-      <Container className="py-12">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">About Suprizely</h1>
-          
-          <div className="prose prose-slate dark:prose-invert">
-            <p className="text-lg mb-6">
-              Welcome to Suprizely, your go-to destination for thoughtful and unique gift ideas for every occasion.
-            </p>
-            
-            <h2 className="text-2xl font-semibold mt-8 mb-4">Our Mission</h2>
-            <p>
-              At Suprizely, we believe that giving the perfect gift is an art. Our mission is to help you find 
-              meaningful gifts that create lasting impressions and strengthen your relationships with loved ones.
-            </p>
-            
-            <h2 className="text-2xl font-semibold mt-8 mb-4">Our Story</h2>
-            <p>
-              Suprizely was founded in 2023 by a team of gift enthusiasts who were frustrated with the challenge 
-              of finding unique gifts for friends and family. What started as a small curated collection has grown 
-              into a comprehensive gift recommendation platform.
-            </p>
-            
-            <h2 className="text-2xl font-semibold mt-8 mb-4">What Makes Us Different</h2>
-            <ul className="list-disc pl-6 mb-6">
-              <li className="mb-2">Thoughtfully curated selection of high-quality products</li>
-              <li className="mb-2">Personalized gift recommendations based on recipient interests</li>
-              <li className="mb-2">Focus on unique and memorable gifts that stand out</li>
-              <li className="mb-2">Commitment to exceptional customer service</li>
-            </ul>
-            
-            <h2 className="text-2xl font-semibold mt-8 mb-4">Our Values</h2>
-            <p>
-              We believe in the power of thoughtful gifting to strengthen relationships and create meaningful moments. 
-              Every product we recommend is selected with care, quality, and uniqueness in mind.
-            </p>
-            
-            <p className="mt-8">
-              Thank you for choosing Suprizely for your gifting needs. We're excited to help you discover the perfect surprise!
-            </p>
-          </div>
-        </div>
-      </Container>
-    </>
-  );
-};
+    <Container className="py-12">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">About Suprizely</h1>
 
-export default AboutPage;
+        <div className="prose prose-lg">
+          <p className="mb-4">
+            Suprizely was founded with a simple mission: to help people find the perfect gifts for their loved ones.
+          </p>
+
+          <p className="mb-4">
+            We understand that finding the right gift can be challenging. That's why we've created a curated selection of high-quality products across various categories to make your gift-giving experience seamless and memorable.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">Our Values</h2>
+
+          <ul className="list-disc pl-6 mb-6">
+            <li className="mb-2">Quality over quantity - we handpick only the best products</li>
+            <li className="mb-2">Thoughtfulness - we believe gifts should be meaningful</li>
+            <li className="mb-2">Convenience - making gift shopping stress-free</li>
+            <li className="mb-2">Customer satisfaction - your happiness is our priority</li>
+          </ul>
+
+          <h2 className="text-xl font-semibold mt-8 mb-4">Our Team</h2>
+
+          <p className="mb-4">
+            Suprizely is run by a team of passionate individuals who love finding unique and thoughtful gifts. Our team combines expertise in product curation, customer service, and technology to deliver the best gift-finding experience.
+          </p>
+
+          <p className="mb-4">
+            We're constantly exploring new products and gift ideas to keep our selection fresh and exciting.
+          </p>
+        </div>
+      </div>
+    </Container>
+  );
+}
