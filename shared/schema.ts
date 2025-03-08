@@ -55,7 +55,7 @@ export const insertUserSchema = createInsertSchema(users)
       .regex(/[A-Z]/, "Password must contain at least one capital letter"),
   });
 
-// Product schema with simplified price handling
+// Product schema with flexible price handling
 export const insertProductSchema = createInsertSchema(products)
   .pick({
     name: true,
@@ -65,7 +65,7 @@ export const insertProductSchema = createInsertSchema(products)
     category: true,
   })
   .extend({
-    price: z.string(),
+    price: z.string().or(z.number()).transform(val => String(val)),
   });
 
 export const insertWishlistSchema = createInsertSchema(wishlist).pick({

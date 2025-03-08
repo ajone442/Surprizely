@@ -45,9 +45,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Manual product data entry
         productData = req.body;
+        // Preserve the price format exactly as entered
+        console.log("Product data received:", productData);
       }
 
       const product = insertProductSchema.parse(productData);
+      // Log the parsed product
+      console.log("Parsed product:", product);
       const created = await storage.createProduct(product);
       res.status(201).json(created);
     } catch (error) {

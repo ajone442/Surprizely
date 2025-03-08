@@ -24,13 +24,13 @@ export default function AdminPage() {
     try {
       const response = await apiRequest("GET", "/api/products");
       let data;
-      
+
       if (response.ok) {
         data = await response.json();
       } else {
         data = [];
       }
-      
+
       console.log("Fetched products:", data);
       return data || []; // Ensure we always return an array
     } catch (error) {
@@ -49,7 +49,7 @@ export default function AdminPage() {
   });
 
   const products = Array.isArray(data) ? data : [];
-  
+
   // Add debugging to check products data
   console.log("Admin Dashboard Products:", products);
 
@@ -110,21 +110,16 @@ export default function AdminPage() {
     setShowRatings(true);
   };
 
-  const handleProductSubmit = () => {
-    // This function is called when product form completes
+  const handleEditProduct = (product: Product) => {
+    console.log("Setting product for editing:", product);
+    setEditingProduct(product);
+  };
+
+  const handleProductSubmit = (data: any) => {
+    console.log("Product submitted:", data);
     setEditingProduct(null);
     setAddingProduct(false);
-
-    console.log("Product form submitted, refreshing product list");
-
-    // Clear cache and force immediate refetch
-    queryClient.removeQueries({ queryKey: ["/api/products"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-
-    // Immediate refetch
-    refetch();
-
-    // Double-check with a delay to ensure data is updated
+    // Force immediate refetch to update the product list
     setTimeout(() => {
       refetch();
     }, 500);
@@ -204,7 +199,7 @@ export default function AdminPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setEditingProduct(product)}
+                        onClick={() => handleEditProduct(product)}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>

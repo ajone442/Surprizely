@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -83,9 +82,9 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
       if (!cleanValues.productUrl) {
         delete cleanValues.productUrl;
       }
-      
+
       console.log("Submitting product data:", cleanValues);
-      
+
       if (product) {
         // Update existing product
         return apiRequest("PATCH", `/api/products/${product.id}`, cleanValues);
@@ -98,17 +97,17 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
     },
     onSuccess: async (response) => {
       console.log("Product created/updated successfully:", response);
-      
+
       // Reset form
       form.reset();
-      
+
       // Force refresh products list
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       queryClient.refetchQueries({ 
         queryKey: ["/api/products"],
         type: 'all'
       });
-      
+
       // Call onComplete to trigger parent component refresh
       if (onComplete) {
         onComplete();
@@ -212,12 +211,18 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
                 <FormItem>
                   <FormLabel>Price</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="29.99"
-                      {...field}
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2">
+                        $
+                      </span>
+                      <Input
+                        type="text"
+                        placeholder="0.00"
+                        className="pl-8"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
