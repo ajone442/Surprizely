@@ -39,28 +39,21 @@ export default function FAQPage() {
           <AccordionItem value="item-4">
             <AccordionTrigger>Can I return or exchange a gift?</AccordionTrigger>
             <AccordionContent>
-              Yes, we offer a 30-day return policy for most items. Products must be unused, in their original packaging, and accompanied by the receipt. Some personalized items may not be eligible for returns.
+              Since Suprizely is an affiliate site, all returns and exchanges are handled directly by the retailers you purchase from. Each retailer has their own return policy, so please refer to the specific retailer's website for their return and exchange procedures.
             </AccordionContent>
           </AccordionItem>
           
           <AccordionItem value="item-5">
-            <AccordionTrigger>Do you offer gift wrapping?</AccordionTrigger>
+            <AccordionTrigger>How can I track my order?</AccordionTrigger>
             <AccordionContent>
-              Yes, we offer gift wrapping services for an additional fee. You can select this option during checkout and even add a personalized message for the recipient.
+              Order tracking is handled by the retailer you purchased from. You'll receive tracking information directly from the retailer according to their policies. Suprizely does not process or track orders as we are an affiliate site that connects you to retailers.
             </AccordionContent>
           </AccordionItem>
           
           <AccordionItem value="item-6">
-            <AccordionTrigger>How can I track my order?</AccordionTrigger>
+            <AccordionTrigger>Do retailers offer international shipping?</AccordionTrigger>
             <AccordionContent>
-              Once your order ships, you'll receive a confirmation email with tracking information. You can also log into your account on our website to view your order status and tracking details.
-            </AccordionContent>
-          </AccordionItem>
-          
-          <AccordionItem value="item-7">
-            <AccordionTrigger>Do you ship internationally?</AccordionTrigger>
-            <AccordionContent>
-              Yes, we offer international shipping to most countries. Shipping rates and delivery times vary based on the destination. Import duties and taxes may apply and are the responsibility of the recipient.
+              International shipping availability depends entirely on the individual retailer's policies. Some of our affiliate partners offer international shipping while others may not. Please check the retailer's website for their specific shipping information before making a purchase.
             </AccordionContent>
           </AccordionItem>
         </Accordion>
