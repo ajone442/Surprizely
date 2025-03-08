@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Product } from "@shared/schema";
 import ProductForm from "@/components/ProductForm";
@@ -7,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Pencil, Trash2, ArrowLeft, Star } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RatingManagement } from "@/components/RatingManagement"; // Placeholder component
