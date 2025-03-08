@@ -41,46 +41,46 @@ export default function Footer() {
             <ul className="space-y-2">
               <li>
                 <Link href="/">
-                  <span className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
+                  <div className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
                     Home
-                  </span>
+                  </div>
                 </Link>
               </li>
               <li>
                 <Link href="/products">
-                  <span className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
+                  <div className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
                     Products
-                  </span>
+                  </div>
                 </Link>
               </li>
               <li>
                 <Link href="/about">
-                  <span className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
+                  <div className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
                     About Us
-                  </span>
+                  </div>
                 </Link>
               </li>
               <li>
                 <Link href="/blog">
-                  <span className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
+                  <div className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
                     Blog
-                  </span>
+                  </div>
                 </Link>
               </li>
               <li>
                 <Link href="/faq">
-                  <span className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
+                  <div className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
                     FAQ
-                  </span>
+                  </div>
                 </Link>
               </li>
               {user?.isAdmin && (
                 <li>
                   <Link href="/admin">
-                    <span className="flex items-center text-sm text-primary hover:underline cursor-pointer">
+                    <div className="flex items-center text-sm text-primary hover:underline cursor-pointer">
                       <Settings className="mr-1 h-4 w-4" />
                       Admin Dashboard
-                    </span>
+                    </div>
                   </Link>
                 </li>
               )}
@@ -109,19 +109,19 @@ export default function Footer() {
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy">
-                <span className="text-sm text-muted-foreground hover:text-primary cursor-pointer">
+                <div className="text-sm text-muted-foreground hover:text-primary cursor-pointer">
                   Privacy Policy
-                </span>
+                </div>
               </Link>
               <Link href="/terms">
-                <span className="text-sm text-muted-foreground hover:text-primary cursor-pointer">
+                <div className="text-sm text-muted-foreground hover:text-primary cursor-pointer">
                   Terms of Service
-                </span>
+                </div>
               </Link>
               <Link href="/faq">
-                <span className="text-sm text-muted-foreground hover:text-primary cursor-pointer">
+                <div className="text-sm text-muted-foreground hover:text-primary cursor-pointer">
                   FAQ
-                </span>
+                </div>
               </Link>
             </div>
           </div>
