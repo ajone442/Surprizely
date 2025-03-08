@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { ExternalLink, Settings, ShoppingBag, Heart, Phone, Mail, MapPin } from "lucide-react";
+import { ExternalLink, Settings, ShoppingBag, Heart, Mail, Gift, Tag } from "lucide-react";
 
 export default function Footer() {
   const { user } = useAuth();
@@ -68,19 +68,33 @@ export default function Footer() {
           </div>
 
           <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Gift Categories</h3>
+            <ul className="space-y-2">
+              <li className="flex items-center text-sm text-muted-foreground">
+                <Gift className="mr-2 h-4 w-4" />
+                Jewelry
+              </li>
+              <li className="flex items-center text-sm text-muted-foreground">
+                <Gift className="mr-2 h-4 w-4" />
+                Tech Gadgets
+              </li>
+              <li className="flex items-center text-sm text-muted-foreground">
+                <Gift className="mr-2 h-4 w-4" />
+                Home Decor
+              </li>
+              <li className="flex items-center text-sm text-muted-foreground">
+                <Tag className="mr-2 h-4 w-4" />
+                Personalized Gifts
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Contact Us</h3>
             <ul className="space-y-2">
               <li className="flex items-center text-sm text-muted-foreground">
-                <Phone className="mr-2 h-4 w-4" />
-                (555) 123-4567
-              </li>
-              <li className="flex items-center text-sm text-muted-foreground">
                 <Mail className="mr-2 h-4 w-4" />
-                support@giftregistry.com
-              </li>
-              <li className="flex items-center text-sm text-muted-foreground">
-                <MapPin className="mr-2 h-4 w-4" />
-                123 Gift Street, Registry City
+                support@suprizely.com
               </li>
             </ul>
           </div>
