@@ -29,24 +29,24 @@ export default function AdminPage() {
   const { data, refetch } = useQuery<Product[]>({
     queryKey: ["/api/products"],
     queryFn: fetchProducts,
+    staleTime: 0, // Consider data always stale to force refetches
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
-    staleTime: 5000, // Reduced stale time
-    refetchInterval: 10000, // Added refetch interval
   });
 
   // Ensure products is always an array and refresh after mutations
   const products = Array.isArray(data) ? data : [];
-  
+
   // Use effect to refetch when component loads
   React.useEffect(() => {
     // Refetch products when component mounts
     refetch();
-    
+
     // Set up interval to periodically check for updates
     const interval = setInterval(() => {
       refetch();
     }, 5000);
-    
+
     // Clean up interval on unmount
     return () => clearInterval(interval);
   }, [refetch]);
@@ -73,6 +73,22 @@ export default function AdminPage() {
     setSelectedProductId(productId);
     setShowRatings(true);
   };
+
+  const handleProductSubmit = () => {
+    // Properly invalidate and force an immediate refetch
+    queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+    refetch();
+    // Close the product forms
+    setAddingProduct(false);
+    setEditingProduct(null);
+
+    console.log("Admin page: product form submitted, triggering refetch");
+
+    // Add a small delay and refetch again to ensure data is updated
+    setTimeout(() => {
+      refetch();
+    }, 500);
+  }
 
 
   return (
@@ -103,7 +119,7 @@ export default function AdminPage() {
             </h2>
             <ProductForm
               product={editingProduct}
-              onComplete={() => setEditingProduct(null)}
+              onComplete={handleProductSubmit} //Corrected the onComplete prop
             />
           </div>
 

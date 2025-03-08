@@ -77,10 +77,18 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
         console.log("Added product:", response);
       }
 
-      // Properly invalidate and refetch queries
+      // Explicitly invalidate and refetch with correct options
       await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/products"] });
-
+      
+      // Force a refetch to ensure UI updates
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/products"],
+        exact: true,
+        type: 'active',
+        stale: true
+      });
+      
+      console.log("Product created/updated successfully, form reset");
       form.reset(); // Reset the form after submission
 
       toast({
@@ -363,7 +371,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
 
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Product
+              {product ? "Update Product" : "Create Product"}
             </Button>
           </form>
         </TabsContent>
