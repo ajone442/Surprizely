@@ -95,19 +95,23 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
         console.log("Added product:", response);
       }
 
-      // Explicitly invalidate and refetch with correct options
-      await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      // Reset form first to ensure clean state
+      form.reset(); 
       
-      // Force a refetch to ensure UI updates
+      // Clear the cache completely to ensure fresh data
+      queryClient.removeQueries({ queryKey: ["/api/products"] });
+      
+      // Then invalidate and force a full refetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       await queryClient.refetchQueries({ 
         queryKey: ["/api/products"],
         exact: true,
-        type: 'active',
-        stale: true
+        type: 'all'
       });
       
-      console.log("Product created/updated successfully, form reset");
-      form.reset(); // Reset the form after submission
+      console.log("Product created/updated successfully");
+      // Call onComplete to trigger parent component refresh
+      if (onComplete) onComplete();
 
       toast({
         title: product ? "Product updated" : "Product created",

@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [, setLocation] = useLocation();
   const [showRatings, setShowRatings] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState(null);
+  const [addingProduct, setAddingProduct] = useState(false); // Added state for adding product
 
   const fetchProducts = async () => {
     const data = await apiRequest("GET", "/api/products");
@@ -45,7 +46,7 @@ export default function AdminPage() {
     // Set up interval to periodically check for updates
     const interval = setInterval(() => {
       refetch();
-    }, 5000);
+    }, 3000);
 
     // Clean up interval on unmount
     return () => clearInterval(interval);
@@ -74,16 +75,11 @@ export default function AdminPage() {
     setShowRatings(true);
   };
 
+  // This function is called when product form completes
   const handleProductSubmit = () => {
-    // Properly invalidate and force an immediate refetch
-    queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-    refetch();
-    // Close the product forms
-    setAddingProduct(false);
     setEditingProduct(null);
-
-    console.log("Admin page: product form submitted, triggering refetch");
-
+    // Force immediate refetch after product submission
+    refetch();
     // Add a small delay and refetch again to ensure data is updated
     setTimeout(() => {
       refetch();
