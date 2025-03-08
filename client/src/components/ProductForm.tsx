@@ -37,7 +37,7 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
       price: product?.price ? String(product.price) : "",
       imageUrl: product?.imageUrl || "",
       affiliateLink: product?.affiliateLink || "",
-      category: product?.category || "",
+      category: product?.category || "Electronics", // Default category
     },
   });
 
@@ -63,6 +63,24 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
+    console.log("Submitting product data:", data);
+    
+    // Ensure all required fields have values
+    if (!data.name || !data.price || !data.imageUrl || !data.affiliateLink) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill all required fields: name, price, image URL, and affiliate link",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Ensure category is set
+    if (!data.category) {
+      data.category = "Electronics"; // Default category if none selected
+    }
+    
     try {
       // Send price as string without conversion
       const dataToSubmit = {
@@ -101,9 +119,10 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
       form.reset();
       //if (addMode === "url") setProductUrl(""); //addMode is not defined in this scope.
     } catch (error) {
+      console.error("Product submission error:", error);
       toast({
         title: "Error",
-        description: "Failed to save product",
+        description: "Failed to save product. Please check all required fields are filled correctly.",
         variant: "destructive",
       });
     } finally {
