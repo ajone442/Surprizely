@@ -39,8 +39,17 @@ export default function AdminPage() {
   
   // Use effect to refetch when component loads
   React.useEffect(() => {
+    // Refetch products when component mounts
     refetch();
-  }, []);
+    
+    // Set up interval to periodically check for updates
+    const interval = setInterval(() => {
+      refetch();
+    }, 5000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   const handleDelete = async (id: number) => {
     try {
