@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Star, StarHalf } from "lucide-react";
 
 interface RatingProps {
@@ -7,8 +7,6 @@ interface RatingProps {
   onChange?: (rating: number) => void;
   disabled?: boolean;
 }
-
-import React, { useState } from "react";
 
 export function Rating({ value = 0, readonly = false, onChange, disabled = false }: RatingProps) {
   const [hoverValue, setHoverValue] = useState<number | null>(null);
@@ -20,7 +18,7 @@ export function Rating({ value = 0, readonly = false, onChange, disabled = false
     if (hoverValue !== null && index < hoverValue && !readonly) {
       return <Star className="fill-primary text-primary h-4 w-4" />;
     }
-    
+
     // Normal display logic
     if (index < filledStars) {
       return <Star className="fill-primary text-primary h-4 w-4" />;
@@ -35,13 +33,13 @@ export function Rating({ value = 0, readonly = false, onChange, disabled = false
     if (readonly || disabled || !onChange) return;
     onChange(index + 1); // Add 1 to convert from 0-based index to 1-5 rating
   };
-  
+
   const handleMouseEnter = (index: number) => {
     if (!readonly && !disabled) {
       setHoverValue(index + 1);
     }
   };
-  
+
   const handleMouseLeave = () => {
     setHoverValue(null);
   };
