@@ -12,7 +12,12 @@ import { ProtectedRoute } from "./lib/protected-route";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ForgotPasswordPage from "@/pages/forgot-password";
-import AccountPage from "@/pages/account-page"; // Added import
+import AccountPage from "@/pages/account-page";
+import AboutPage from "@/pages/about-page";
+import BlogPage from "@/pages/blog-page";
+import PrivacyPage from "@/pages/privacy-page";
+import TermsPage from "@/pages/terms-page";
+import FAQPage from "@/pages/faq-page";
 
 function Router() {
   return (
@@ -22,7 +27,12 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/wishlist" component={WishlistPage} />
-      <Route path="/account" component={AccountPage} /> {/* Added route */}
+      <Route path="/account" component={AccountPage} />
+      <Route path="/about" component={AboutPage} />
+      <Route path="/blog" component={BlogPage} />
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/terms" component={TermsPage} />
+      <Route path="/faq" component={FAQPage} />
       <Route component={NotFound} />
     </Switch>
   );

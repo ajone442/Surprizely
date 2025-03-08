@@ -1,7 +1,7 @@
 
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { ExternalLink, Settings, Mail, Gift, Tag, Heart, MapPin, Phone, Instagram, Twitter, Facebook } from "lucide-react";
+import { ExternalLink, Settings, Mail, Instagram, Twitter, Facebook } from "lucide-react";
 
 export default function Footer() {
   const { user } = useAuth();
@@ -9,7 +9,7 @@ export default function Footer() {
   return (
     <footer className="mt-auto border-t relative z-10 bg-background py-12 shadow-inner">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
           {/* Company Info */}
           <div className="space-y-4">
             <h3 className="text-xl font-bold text-primary">Suprizely</h3>
@@ -35,9 +35,9 @@ export default function Footer() {
             </div>
           </div>
           
-          {/* Quick Links */}
+          {/* Main Pages */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-primary">Quick Links</h3>
+            <h3 className="text-lg font-semibold text-primary">Pages</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/">
@@ -67,6 +67,13 @@ export default function Footer() {
                   </span>
                 </Link>
               </li>
+              <li>
+                <Link href="/faq">
+                  <span className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
+                    FAQ
+                  </span>
+                </Link>
+              </li>
               {user?.isAdmin && (
                 <li>
                   <Link href="/admin">
@@ -80,33 +87,6 @@ export default function Footer() {
             </ul>
           </div>
           
-          {/* Gift Categories */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-primary">Gift Categories</h3>
-            <ul className="space-y-2">
-              <li className="flex items-center text-sm text-muted-foreground">
-                <Gift className="mr-2 h-4 w-4" />
-                Jewelry
-              </li>
-              <li className="flex items-center text-sm text-muted-foreground">
-                <Gift className="mr-2 h-4 w-4" />
-                Tech Gadgets
-              </li>
-              <li className="flex items-center text-sm text-muted-foreground">
-                <Gift className="mr-2 h-4 w-4" />
-                Home Decor
-              </li>
-              <li className="flex items-center text-sm text-muted-foreground">
-                <Tag className="mr-2 h-4 w-4" />
-                Personalized Gifts
-              </li>
-              <li className="flex items-center text-sm text-muted-foreground">
-                <Heart className="mr-2 h-4 w-4" />
-                Romantic Gifts
-              </li>
-            </ul>
-          </div>
-          
           {/* Contact Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Contact Us</h3>
@@ -116,19 +96,6 @@ export default function Footer() {
                 <a href="mailto:support@suprizely.com" className="hover:text-primary transition-colors">
                   support@suprizely.com
                 </a>
-              </li>
-              <li className="flex items-center text-sm text-muted-foreground">
-                <Phone className="mr-2 h-4 w-4 flex-shrink-0" />
-                <a href="tel:+1234567890" className="hover:text-primary transition-colors">
-                  (123) 456-7890
-                </a>
-              </li>
-              <li className="flex items-start text-sm text-muted-foreground">
-                <MapPin className="mr-2 h-4 w-4 flex-shrink-0 mt-0.5" />
-                <span>
-                  123 Gift Avenue<br />
-                  Surprise City, SC 12345
-                </span>
               </li>
             </ul>
           </div>
