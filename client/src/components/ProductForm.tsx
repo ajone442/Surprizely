@@ -53,26 +53,31 @@ export default function ProductForm({ product, onComplete }: ProductFormProps) {
   // Initialize form with default values or existing product
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: product
-      ? {
-          name: product.name,
-          description: product.description || "",
-          imageUrl: product.imageUrl || "",
-          affiliateLink: product.affiliateLink || "",
-          category: product.category,
-          price: product.price.toString(),
+    defaultValues: {
+          name: product ? product.name : "",
+          description: product ? product.description || "" : "",
+          imageUrl: product ? product.imageUrl || "" : "",
+          affiliateLink: product ? product.affiliateLink || "" : "",
+          category: product ? product.category : "",
+          price: product ? String(product.price) : "",
           productUrl: "",
-        }
-      : {
-          name: "",
-          description: "",
-          imageUrl: "",
-          affiliateLink: "",
-          category: "",
-          price: "",
-          productUrl: "",
-        },
+    },
   });
+
+  // This ensures the form updates when the product prop changes
+  useEffect(() => {
+    if (product) {
+      form.reset({
+        name: product.name,
+        description: product.description || "",
+        imageUrl: product.imageUrl || "",
+        affiliateLink: product.affiliateLink || "",
+        category: product.category,
+        price: String(product.price),
+        productUrl: "",
+      });
+    }
+  }, [product, form]);
 
   // Create or update mutation
   const mutation = useMutation({

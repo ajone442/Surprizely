@@ -65,7 +65,7 @@ export const insertProductSchema = createInsertSchema(products)
     category: true,
   })
   .extend({
-    price: z.string().or(z.number()).transform(val => String(val)),
+    price: z.string().or(z.number()),
   });
 
 export const insertWishlistSchema = createInsertSchema(wishlist).pick({

@@ -167,7 +167,7 @@ export class MemStorage implements IStorage {
     const newProduct = {
       id,
       ...product,
-      price: parseInt(product.price),
+      price: product.price,
       averageRating: 0,
       ratingCount: 0,
     };
