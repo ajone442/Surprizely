@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Product } from "@shared/schema";
 import GiftCard from "@/components/GiftCard";
@@ -34,7 +34,7 @@ export default function HomePage() {
   });
 
   //This useEffect will handle the initial fetch and subsequent refreshes.
-  React.useEffect(() => {
+  useEffect(() => {
     refetch();
   }, [refetch]);
 
