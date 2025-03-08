@@ -1,11 +1,17 @@
-
+import React, { useState } from "react";
+import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertProductSchema, giftCategories, type Product } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -14,359 +20,289 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
-import React, { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Product } from "@shared/schema";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+// Form schema
+const formSchema = z.object({
+  name: z.string().min(3, { message: "Name must be at least 3 characters" }),
+  description: z.string().optional(),
+  imageUrl: z.string().url({ message: "Must be a valid URL" }),
+  affiliateLink: z.string().url({ message: "Must be a valid URL" }),
+  category: z.string().min(1, { message: "Category is required" }),
+  price: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+    message: "Price must be a positive number",
+  }),
+  // Product URL for scraping - optional
+  productUrl: z.string().url({ message: "Must be a valid URL" }).optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface ProductFormProps {
   product?: Product | null;
-  onComplete: () => void;
+  onComplete?: () => void;
 }
 
 export default function ProductForm({ product, onComplete }: ProductFormProps) {
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isParsingUrl, setIsParsingUrl] = useState(false);
+  const [isUrlMode, setIsUrlMode] = useState(false);
 
-  // Form for manual product entry
-  const form = useForm({
-    resolver: zodResolver(insertProductSchema),
-    defaultValues: {
-      name: product?.name || "",
-      description: product?.description || "",
-      price: product?.price ? String(product.price) : "",
-      imageUrl: product?.imageUrl || "",
-      affiliateLink: product?.affiliateLink || "",
-      category: product?.category || "Electronics", // Default category
-    },
+  // Initialize form with default values or existing product
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: product
+      ? {
+          name: product.name,
+          description: product.description || "",
+          imageUrl: product.imageUrl || "",
+          affiliateLink: product.affiliateLink || "",
+          category: product.category,
+          price: product.price.toString(),
+        }
+      : {
+          name: "",
+          description: "",
+          imageUrl: "",
+          affiliateLink: "",
+          category: "",
+          price: "",
+          productUrl: "",
+        },
   });
 
-  // Form for URL parsing
-  const urlForm = useForm({
-    defaultValues: {
-      productUrl: "",
-    },
-  });
-
-  // Set form values when product changes
-  React.useEffect(() => {
-    if (product) {
-      form.reset({
-        name: product.name,
-        description: product.description,
-        price: String(product.price),
-        imageUrl: product.imageUrl,
-        affiliateLink: product.affiliateLink,
-        category: product.category,
-      });
-    }
-  }, [product, form]);
-
-  // Submit handler for manual product entry
-  const onSubmit = async (data) => {
-    setIsSubmitting(true);
-    console.log("Submitting product data:", data);
-    
-    try {
-      let response;
-      
+  // Create or update mutation
+  const mutation = useMutation({
+    mutationFn: async (values: FormValues) => {
+      console.log("Submitting product data:", values);
       if (product) {
         // Update existing product
-        response = await apiRequest("PATCH", `/api/products/${product.id}`, data);
-        console.log("Updated product:", response);
+        return apiRequest("PATCH", `/api/products/${product.id}`, values);
       } else {
         // Create new product
-        response = await apiRequest("POST", `/api/products`, data);
+        const response = await apiRequest("POST", "/api/products", values);
         console.log("Added product:", response);
+        return response;
       }
+    },
+    onSuccess: async () => {
+      // Reset form first to ensure clean state
+      form.reset(); 
 
-      // Clear form first
-      form.reset();
-      
-      // Clear cache and force refetch
+      // Clear the cache completely to ensure fresh data
       queryClient.removeQueries({ queryKey: ["/api/products"] });
+
+      // Then invalidate and force a full refetch
       await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      
-      // Success toast
+      await queryClient.refetchQueries({ 
+        queryKey: ["/api/products"],
+        exact: true,
+        type: 'all'
+      });
+
+      console.log("Product created/updated successfully");
+      // Call onComplete to trigger parent component refresh
+      if (onComplete) onComplete();
+
       toast({
         title: product ? "Product updated" : "Product created",
-        description: product
-          ? "The product has been successfully updated."
-          : "The product has been successfully created.",
+        description: "The product has been saved successfully.",
       });
-      
-      // Notify parent component
-      if (onComplete) onComplete();
-    } catch (error) {
-      console.error("Product submission error:", error);
+    },
+    onError: (error) => {
+      console.error("Error creating/updating product:", error);
       toast({
         title: "Error",
-        description: "Failed to save product. Please check all required fields are filled correctly.",
+        description: "Failed to save product. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
-    }
+    },
+  });
+
+  const onSubmit = (values: FormValues) => {
+    mutation.mutate(values);
   };
 
-  // Submit handler for URL parsing
-  const handleUrlSubmit = async (data: { productUrl: string }) => {
-    try {
-      setIsParsingUrl(true);
-      const response = await apiRequest("POST", "/api/products", {
-        productUrl: data.productUrl,
-      });
-      console.log("Added product from URL:", response);
-
-      toast({
-        title: "Product added",
-        description: "Successfully added product from URL",
-      });
-
-      // Force refetch products
-      queryClient.removeQueries({ queryKey: ["/api/products"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-
-      urlForm.reset();
-      if (onComplete) onComplete();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to parse product URL. Please ensure it's a valid Amazon or Etsy product page.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsParsingUrl(false);
-    }
-  };
-
-  // If in edit mode, only show the manual form
-  if (product) {
-    return (
-      <div className="bg-card rounded-lg border p-6">
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="name">Product Name</Label>
-            <Input
-              id="name"
-              placeholder="Enter product name"
-              {...form.register("name")}
-            />
-            {form.formState.errors.name && (
-              <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Product Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Enter product description"
-              {...form.register("description")}
-            />
-            {form.formState.errors.description && (
-              <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="price">Price</Label>
-            <Input
-              id="price"
-              placeholder="Enter price"
-              {...form.register("price")}
-            />
-            {form.formState.errors.price && (
-              <p className="text-sm text-destructive">{form.formState.errors.price.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="imageUrl">Image URL</Label>
-            <Input
-              id="imageUrl"
-              placeholder="Enter image URL"
-              {...form.register("imageUrl")}
-            />
-            {form.formState.errors.imageUrl && (
-              <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="affiliateLink">Affiliate Link</Label>
-            <Input
-              id="affiliateLink"
-              placeholder="Enter affiliate link"
-              {...form.register("affiliateLink")}
-            />
-            {form.formState.errors.affiliateLink && (
-              <p className="text-sm text-destructive">{form.formState.errors.affiliateLink.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select
-              onValueChange={(value) => form.setValue("category", value)}
-              defaultValue={form.getValues("category")}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {giftCategories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {form.formState.errors.category && (
-              <p className="text-sm text-destructive">{form.formState.errors.category.message}</p>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onComplete}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Update Product
-            </Button>
-          </div>
-        </form>
-      </div>
-    );
-  }
+  // For loading from URL
+  const categories = [
+    "Electronics",
+    "Clothing",
+    "Home & Kitchen",
+    "Books",
+    "Toys",
+    "Beauty",
+    "Sports",
+    "Jewelry",
+    "Food",
+    "Other",
+  ];
 
   return (
-    <div className="bg-card rounded-lg border p-6">
-      <Tabs defaultValue="url" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="url">Add from URL</TabsTrigger>
-          <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="url">
-          <form onSubmit={urlForm.handleSubmit(handleUrlSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="productUrl">Product URL</Label>
-              <Input
-                id="productUrl"
-                placeholder="Paste Amazon or Etsy product URL"
-                {...urlForm.register("productUrl")}
-              />
-              <p className="text-xs text-muted-foreground">
-                We'll automatically extract product details from the URL.
-              </p>
-            </div>
-
-            <Button type="submit" disabled={isParsingUrl} className="w-full">
-              {isParsingUrl && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Add Product from URL
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {!product && (
+          <div className="flex items-center space-x-2">
+            <Button
+              type="button"
+              variant={isUrlMode ? "default" : "outline"}
+              onClick={() => setIsUrlMode(false)}
+            >
+              Manual Entry
             </Button>
-          </form>
-        </TabsContent>
-
-        <TabsContent value="manual">
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="name">Product Name</Label>
-              <Input
-                id="name"
-                placeholder="Enter product name"
-                {...form.register("name")}
-              />
-              {form.formState.errors.name && (
-                <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Product Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Enter product description"
-                {...form.register("description")}
-              />
-              {form.formState.errors.description && (
-                <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="price">Price</Label>
-              <Input
-                id="price"
-                placeholder="Enter price"
-                {...form.register("price")}
-              />
-              {form.formState.errors.price && (
-                <p className="text-sm text-destructive">{form.formState.errors.price.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="imageUrl">Image URL</Label>
-              <Input
-                id="imageUrl"
-                placeholder="Enter image URL"
-                {...form.register("imageUrl")}
-              />
-              {form.formState.errors.imageUrl && (
-                <p className="text-sm text-destructive">{form.formState.errors.imageUrl.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="affiliateLink">Affiliate Link</Label>
-              <Input
-                id="affiliateLink"
-                placeholder="Enter affiliate link"
-                {...form.register("affiliateLink")}
-              />
-              {form.formState.errors.affiliateLink && (
-                <p className="text-sm text-destructive">{form.formState.errors.affiliateLink.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select
-                onValueChange={(value) => form.setValue("category", value)}
-                defaultValue={form.getValues("category")}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {giftCategories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {form.formState.errors.category && (
-                <p className="text-sm text-destructive">{form.formState.errors.category.message}</p>
-              )}
-            </div>
-
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Product
+            <Button
+              type="button"
+              variant={isUrlMode ? "outline" : "default"}
+              onClick={() => setIsUrlMode(true)}
+            >
+              Import from URL
             </Button>
-          </form>
-        </TabsContent>
-      </Tabs>
-    </div>
+          </div>
+        )}
+
+        {isUrlMode && !product ? (
+          <FormField
+            control={form.control}
+            name="productUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Product URL</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="https://example.com/product"
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          <>
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Product name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Product description"
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price</FormLabel>
+                    <FormControl>
+                      <Input placeholder="9.99" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Image URL</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="https://example.com/image.jpg"
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="affiliateLink"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Affiliate Link</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="https://example.com/buy"
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
+
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={mutation.isPending}
+        >
+          {mutation.isPending ? "Saving..." : product ? "Update Product" : "Create Product"}
+        </Button>
+      </form>
+    </Form>
   );
 }

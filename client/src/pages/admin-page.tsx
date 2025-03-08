@@ -21,9 +21,14 @@ export default function AdminPage() {
 
   // Fetch products
   const fetchProducts = async () => {
-    const data = await apiRequest("GET", "/api/products");
-    console.log("Fetched products:", data);
-    return data;
+    try {
+      const data = await apiRequest("GET", "/api/products");
+      console.log("Fetched products:", data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      return [];
+    }
   };
 
   const { data, isLoading, refetch } = useQuery<Product[]>({
@@ -41,11 +46,19 @@ export default function AdminPage() {
     console.log("Setting up refetch interval");
     refetch();
     
+    // Check immediately first
+    const initialRefetch = setTimeout(() => {
+      refetch();
+    }, 500);
+    
     const interval = setInterval(() => {
       refetch();
     }, 2000);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialRefetch);
+      clearInterval(interval);
+    };
   }, [refetch]);
 
   // Delete mutation
@@ -95,6 +108,10 @@ export default function AdminPage() {
     
     setTimeout(() => {
       refetch();
+      // Refetch again after a short delay to ensure everything is updated
+      setTimeout(() => {
+        refetch();
+      }, 1000);
     }, 500);
   };
 
@@ -191,12 +208,13 @@ export default function AdminPage() {
         </div>
       </main>
 
+      {/* Ratings Dialog */}
       <Dialog open={showRatings} onOpenChange={setShowRatings}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Manage Ratings</DialogTitle>
             <DialogDescription>
-              View and moderate user ratings for this product.
+              Edit and delete product ratings
             </DialogDescription>
           </DialogHeader>
           {selectedProductId && <RatingManagement productId={selectedProductId} />}

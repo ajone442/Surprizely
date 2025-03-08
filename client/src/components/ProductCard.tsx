@@ -1,133 +1,126 @@
 
-import React from "react";
-import { Heart } from "lucide-react";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Product } from "@shared/schema";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ExternalLink, Heart } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { StarRating } from "./StarRating";
+import { Rating } from "./Rating";
 
 interface ProductCardProps {
-  product: {
-    id: number;
-    name: string;
-    description: string;
-    price: number;
-    imageUrl: string;
-    affiliateLink: string;
-    category: string;
-    averageRating?: number;
-    ratingCount?: number;
-  };
-  inWishlist?: boolean;
-  onWishlistChange?: () => void;
-  onRatingChange?: () => void;
+  product: Product;
 }
 
-export function ProductCard({
-  product,
-  inWishlist = false,
-  onWishlistChange,
-  onRatingChange,
-}: ProductCardProps) {
-  const [isInWishlist, setIsInWishlist] = React.useState(inWishlist);
-  const [isLoading, setIsLoading] = React.useState(false);
+export function ProductCard({ product }: ProductCardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const toggleWishlist = async () => {
+  const { data: wishlist = [] } = useQuery<Product[]>({
+    queryKey: ["/api/wishlist"],
+    enabled: !!user,
+  });
+
+  const isInWishlist = wishlist.some((item) => item.id === product.id);
+
+  const addToWishlist = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/wishlist/${product.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wishlist"] });
+      toast({
+        title: "Added to wishlist",
+        description: "The item has been added to your wishlist.",
+      });
+    },
+  });
+
+  const removeFromWishlist = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/wishlist/${product.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wishlist"] });
+      toast({
+        title: "Removed from wishlist",
+        description: "The item has been removed from your wishlist.",
+      });
+    },
+  });
+
+  const handleWishlistClick = () => {
     if (!user) {
       toast({
-        title: "Authentication Required",
-        description: "Please log in to add items to your wishlist",
+        title: "Login required",
+        description: "Please login to add items to your wishlist.",
+        variant: "destructive",
       });
       return;
     }
 
-    setIsLoading(true);
-    try {
-      if (isInWishlist) {
-        await apiRequest("DELETE", `/api/wishlist/${product.id}`);
-        setIsInWishlist(false);
-        toast({
-          title: "Removed from Wishlist",
-          description: `${product.name} has been removed from your wishlist`,
-        });
-      } else {
-        await apiRequest("POST", `/api/wishlist/${product.id}`);
-        setIsInWishlist(true);
-        toast({
-          title: "Added to Wishlist",
-          description: `${product.name} has been added to your wishlist`,
-        });
-      }
-      if (onWishlistChange) {
-        onWishlistChange();
-      }
-    } catch (error) {
-      console.error("Wishlist operation failed:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update wishlist. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRatingChange = () => {
-    if (onRatingChange) {
-      onRatingChange();
+    if (isInWishlist) {
+      removeFromWishlist.mutate();
+    } else {
+      addToWishlist.mutate();
     }
   };
 
   return (
-    <Card className="overflow-hidden">
-      <div className="relative aspect-video overflow-hidden">
-        <img
-          src={product.imageUrl}
-          alt={product.name}
-          className="object-cover w-full h-full"
-        />
-      </div>
-      <CardContent className="p-4">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="font-semibold text-lg line-clamp-1">{product.name}</h3>
-            <p className="text-sm text-muted-foreground">{product.category}</p>
-          </div>
-          <div className="text-lg font-bold">${(product.price / 100).toFixed(2)}</div>
-        </div>
-        <p className="mt-2 text-sm line-clamp-2">{product.description}</p>
-        
-        <div className="mt-3">
-          <StarRating 
-            productId={product.id}
-            averageRating={product.averageRating || 0}
-            ratingCount={product.ratingCount || 0}
-            onRatingChange={handleRatingChange}
+    <Card className="overflow-hidden h-full flex flex-col">
+      {product.imageUrl && (
+        <div className="aspect-[4/3] relative">
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            className="object-cover w-full h-full"
           />
+          <button
+            onClick={handleWishlistClick}
+            className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-md"
+          >
+            <Heart
+              className={`h-5 w-5 ${
+                isInWishlist ? "fill-red-500 text-red-500" : "text-gray-400"
+              }`}
+            />
+          </button>
+        </div>
+      )}
+      <CardHeader className="p-4 pb-0">
+        <CardTitle className="line-clamp-1">{product.name}</CardTitle>
+        <CardDescription>${parseFloat(String(product.price)).toFixed(2)}</CardDescription>
+      </CardHeader>
+      <CardContent className="p-4 py-2 flex-grow">
+        <p className="text-sm text-muted-foreground line-clamp-2">
+          {product.description || "No description available"}
+        </p>
+        <div className="mt-2">
+          <Rating rating={product.averageRating || 0} />
         </div>
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between">
-        <Button
-          variant="outline"
-          size="icon"
-          disabled={isLoading}
-          onClick={toggleWishlist}
-        >
-          <Heart
-            className={`h-4 w-4 ${isInWishlist ? "fill-red-500 text-red-500" : ""}`}
-          />
-        </Button>
-        <Button
-          className="flex-1 ml-2"
-          onClick={() => window.open(product.affiliateLink, "_blank")}
-        >
-          View Product
-        </Button>
+        <span className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
+          {product.category}
+        </span>
+        {product.affiliateLink && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(product.affiliateLink, "_blank")}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            View
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

@@ -17,6 +17,9 @@ export default function HomePage() {
 
   const { data, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 10000, // Refetch after 10 seconds
   });
   
   // Ensure products is always an array
