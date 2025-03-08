@@ -16,23 +16,23 @@ export default function FAQPage() {
         
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="item-1">
-            <AccordionTrigger>How do I place an order?</AccordionTrigger>
+            <AccordionTrigger>How do I use Suprizely to find products?</AccordionTrigger>
             <AccordionContent>
-              To place an order, simply browse our products, select the items you want, add them to your cart, and proceed to checkout. You'll need to provide shipping and payment information to complete your purchase.
+              To find perfect gifts, simply browse our curated product collections or use our search tools. When you find something you like, click on the product link to be redirected to the retailer's website where you can complete your purchase directly with them.
             </AccordionContent>
           </AccordionItem>
           
           <AccordionItem value="item-2">
-            <AccordionTrigger>What payment methods do you accept?</AccordionTrigger>
+            <AccordionTrigger>How do purchases work on Suprizely?</AccordionTrigger>
             <AccordionContent>
-              We accept major credit cards, including Visa, MasterCard, and American Express, as well as PayPal for secure online payments.
+              Suprizely is an affiliate site that connects you with great products. When you click on a product link, you'll be directed to the retailer's website where you can complete your purchase directly with them. We don't process any payments on our site.
             </AccordionContent>
           </AccordionItem>
           
           <AccordionItem value="item-3">
-            <AccordionTrigger>How are delivery times calculated?</AccordionTrigger>
+            <AccordionTrigger>How do delivery and shipping work?</AccordionTrigger>
             <AccordionContent>
-              Delivery times vary depending on your location and the shipping method selected. Standard shipping typically takes 3-5 business days, while express shipping options are available for faster delivery.
+              Since Suprizely is an affiliate site, all shipping and delivery are handled by our partner retailers. Delivery times, shipping costs, and policies will vary depending on the specific retailer you purchase from. Please refer to each retailer's website for their specific shipping information.
             </AccordionContent>
           </AccordionItem>
           

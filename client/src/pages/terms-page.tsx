@@ -37,7 +37,7 @@ export default function TermsPage() {
           <h2 className="text-xl font-semibold mt-8 mb-4">4. Purchases and Payments</h2>
 
           <p className="mb-4">
-            By making a purchase through our website, you agree to pay all charges in full by the payment method you specified. You represent and warrant that you have the legal right to use any payment method provided.
+            By clicking on affiliate links on our website, you may be redirected to third-party websites where you can complete purchases. Please note that we do not process any payments directly - all purchases are handled by our affiliate partners according to their own terms and policies.
           </p>
 
           <h2 className="text-xl font-semibold mt-8 mb-4">5. Changes to Terms</h2>
