@@ -22,7 +22,8 @@ export default function AdminPage() {
   // Fetch products
   const fetchProducts = async () => {
     try {
-      const data = await apiRequest("GET", "/api/products");
+      const response = await apiRequest("GET", "/api/products");
+      const data = await response.json();
       console.log("Fetched products:", data);
       return data;
     } catch (error) {

@@ -8,6 +8,8 @@ interface RatingProps {
   disabled?: boolean;
 }
 
+import React, { useState } from "react";
+
 export function Rating({ value = 0, readonly = false, onChange, disabled = false }: RatingProps) {
   const [hoverValue, setHoverValue] = useState<number | null>(null);
   const filledStars = Math.floor(value);
