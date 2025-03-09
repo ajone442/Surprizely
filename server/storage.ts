@@ -1,4 +1,4 @@
-import { InsertProduct, InsertUser, InsertWishlist } from "@shared/schema";
+import { products, users, wishlist, ratings, giveawayEntries, Product, User, InsertProduct, InsertWishlist, InsertRating, Rating, InsertGiveaway, GiveawayEntry } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
@@ -25,6 +25,10 @@ export interface IStorage {
   rateProduct(ratingData: InsertRating): Promise<Product | undefined>;
   updateRating(ratingId: number, newRating: number): Promise<Product | undefined>;
   deleteRating(ratingId: number): Promise<Product | undefined>;
+  createGiveawayEntry(entryData: InsertGiveaway): Promise<GiveawayEntry>;
+  updateGiveawayEntryEmailStatus(id: number, emailSent: boolean): Promise<GiveawayEntry>;
+  getGiveawayEntries(): Promise<GiveawayEntry[]>;
+  checkRecentGiveawayEntriesByIP(ipAddress: string, minutes?: number): Promise<number>;
   sessionStore: session.Store;
 }
 
@@ -43,14 +47,33 @@ interface InsertRating {
 }
 
 
+interface InsertGiveaway {
+  email: string;
+  orderID: string;
+  productLink?: string | null;
+  ipAddress?: string | null;
+}
+
+interface GiveawayEntry {
+  id: number;
+  email: string;
+  orderID: string;
+  productLink: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  emailSent: boolean;
+}
+
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private products: Map<number, Product>;
   private wishlist: Map<number, Set<number>>;
   private ratings: Map<number, Rating[]>;
+  private giveawayEntries: Map<number, GiveawayEntry>;
   private currentUserId: number;
   private currentProductId: number;
   private currentRatingId: number;
+  private currentGiveawayEntryId: number;
   sessionStore: session.Store;
 
   constructor() {
@@ -58,9 +81,11 @@ export class MemStorage implements IStorage {
     this.products = new Map();
     this.wishlist = new Map();
     this.ratings = new Map();
+    this.giveawayEntries = new Map();
     this.currentUserId = 1;
     this.currentProductId = 1;
     this.currentRatingId = 1;
+    this.currentGiveawayEntryId = 1;
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
@@ -281,6 +306,48 @@ export class MemStorage implements IStorage {
     const updatedProduct = {...this.products.get(productId)!, averageRating: Math.round(averageRating * 10) / 10, ratingCount: updatedRatings.length};
     this.products.set(productId, updatedProduct);
     return updatedProduct;
+  }
+
+  async createGiveawayEntry(entryData: InsertGiveaway): Promise<GiveawayEntry> {
+    const id = this.currentGiveawayEntryId++;
+    const newEntry: GiveawayEntry = {
+      id,
+      ...entryData,
+      productLink: entryData.productLink || null,
+      ipAddress: entryData.ipAddress || null,
+      createdAt: new Date().toISOString(),
+      emailSent: false,
+    };
+    this.giveawayEntries.set(id, newEntry);
+    // Placeholder for sending email - replace with actual email sending logic
+    await this.sendEmail(newEntry.email, newEntry.orderID, newEntry.productLink);
+    return newEntry;
+  }
+
+  async updateGiveawayEntryEmailStatus(id: number, emailSent: boolean): Promise<GiveawayEntry> {
+    const entry = this.giveawayEntries.get(id);
+    if (!entry) throw new Error("Giveaway entry not found");
+    const updatedEntry = { ...entry, emailSent };
+    this.giveawayEntries.set(id, updatedEntry);
+    return updatedEntry;
+  }
+
+  async getGiveawayEntries(): Promise<GiveawayEntry[]> {
+    return Array.from(this.giveawayEntries.values());
+  }
+
+  async checkRecentGiveawayEntriesByIP(ipAddress: string, minutes: number = 60): Promise<number> {
+    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000).toISOString();
+    return Array.from(this.giveawayEntries.values())
+      .filter(entry => entry.ipAddress === ipAddress && new Date(entry.createdAt) > new Date(cutoffTime))
+      .length;
+  }
+
+  // Placeholder for email sending functionality - replace with actual implementation using Flask-Mail or similar
+  private async sendEmail(email: string, orderID: string, productLink: string | null): Promise<void> {
+    console.log(`Sending email to ${email} for order ${orderID} (product link: ${productLink})`);
+    // Add your email sending logic here using Flask-Mail or another email service.
+    //  Remember to handle potential errors and implement robust security measures to prevent spam.
   }
 }
 

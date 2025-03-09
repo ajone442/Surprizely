@@ -3,11 +3,12 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import openai from "./openai";
-import { insertProductSchema, insertWishlistSchema, insertRatingSchema } from "@shared/schema";
+import { insertProductSchema, insertWishlistSchema, insertRatingSchema, insertGiveawaySchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { parseProductUrl } from "./product-parser";
 import passport from 'passport';
 import { hashPassword } from "./auth";
+import { sendGiveawayConfirmation, initEmailTransporter } from "./email";
 
 
 function isAdmin(req: Express.Request, res: Express.Response, next: Express.NextFunction) {
@@ -26,6 +27,9 @@ function isAuthenticated(req: Express.Request, res: Express.Response, next: Expr
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
+  
+  // Initialize email transporter if environment variables are set
+  initEmailTransporter();
 
   app.get("/api/products", async (_req, res) => {
     const products = await storage.getProducts();
@@ -259,6 +263,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Password update error:", error);
       res.status(500).json({ message: "Failed to update password" });
+    }
+  });
+
+  // Giveaway entry endpoint
+  app.post("/api/giveaway", async (req, res) => {
+    try {
+      // Get client IP address for rate limiting
+      const ipAddress = req.headers['x-forwarded-for'] || 
+                        req.socket.remoteAddress || 
+                        'unknown';
+      
+      // Rate limiting check - max 5 entries per hour per IP
+      const recentEntries = await storage.checkRecentGiveawayEntriesByIP(String(ipAddress), 60);
+      if (recentEntries >= 5) {
+        return res.status(429).json({ 
+          message: "Too many entries. Please try again later." 
+        });
+      }
+
+      // Get the affiliate link from the referer or query param
+      const productLink = req.headers.referer || req.body.productLink || '';
+      
+      // Validate and sanitize input
+      const giveawayData = insertGiveawaySchema.parse({
+        email: req.body.email,
+        orderID: req.body.orderID,
+        productLink,
+        ipAddress: String(ipAddress)
+      });
+      
+      // Save to database
+      const entry = await storage.createGiveawayEntry(giveawayData);
+      
+      // Send confirmation email
+      const emailSent = await sendGiveawayConfirmation(
+        giveawayData.email,
+        giveawayData.orderID
+      );
+      
+      // Update entry with email status
+      if (emailSent) {
+        await storage.updateGiveawayEntryEmailStatus(entry.id, true);
+      }
+      
+      res.status(201).json({ 
+        message: "Successfully entered the giveaway!", 
+        entryId: entry.id 
+      });
+    } catch (error) {
+      console.error("Giveaway entry error:", error);
+      
+      if (error instanceof ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid input", 
+          errors: error.errors 
+        });
+      }
+      
+      // Handle duplicate entries
+      if (error.message && error.message.includes("already entered")) {
+        return res.status(400).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: "Failed to process giveaway entry" });
+    }
+  });
+
+  // Admin endpoint to view giveaway entries (protected)
+  app.get("/api/admin/giveaway-entries", isAdmin, async (req, res) => {
+    try {
+      const entries = await storage.getGiveawayEntries();
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching giveaway entries:", error);
+      res.status(500).json({ message: "Failed to fetch giveaway entries" });
     }
   });
 

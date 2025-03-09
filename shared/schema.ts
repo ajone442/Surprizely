@@ -90,6 +90,26 @@ export type Wishlist = typeof wishlist.$inferSelect;
 export type InsertRating = z.infer<typeof insertRatingSchema>;
 export type Rating = typeof ratings.$inferSelect;
 
+export const giveawayEntries = pgTable("giveaway_entries", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  orderID: text("order_id").notNull(),
+  createdAt: text("created_at").notNull().default(new Date().toISOString()),
+  ipAddress: text("ip_address"),
+  productLink: text("product_link"),
+  emailSent: boolean("email_sent").default(false),
+});
+
+export const insertGiveawaySchema = createInsertSchema(giveawayEntries).pick({
+  email: true,
+  orderID: true,
+  productLink: true,
+  ipAddress: true,
+});
+
+export type InsertGiveaway = z.infer<typeof insertGiveawaySchema>;
+export type GiveawayEntry = typeof giveawayEntries.$inferSelect;
+
 export const giftCategories = [
   "Electronics",
   "Fashion",

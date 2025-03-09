@@ -18,6 +18,8 @@ import BlogPage from "@/pages/blog-page";
 import PrivacyPage from "@/pages/privacy-page";
 import TermsPage from "@/pages/terms-page";
 import FAQPage from "@/pages/faq-page";
+import BonusPage from "@/pages/bonus-page";
+import GiveawayEntriesPage from "@/pages/admin/giveaway-entries";
 
 function Router() {
   return (
@@ -33,6 +35,8 @@ function Router() {
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/faq" component={FAQPage} />
+      <Route path="/bonus" component={BonusPage} />
+      <Route path="/admin/giveaway-entries" element={<GiveawayEntriesPage />} />
       <Route component={NotFound} />
     </Switch>
   );
