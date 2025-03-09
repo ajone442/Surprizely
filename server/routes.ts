@@ -27,7 +27,7 @@ function isAuthenticated(req: Express.Request, res: Express.Response, next: Expr
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
-  
+
   // Initialize email transporter if environment variables are set
   initEmailTransporter();
 
@@ -110,20 +110,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await storage.removeFromWishlist(req.user!.id, productId);
     res.sendStatus(204);
   });
-  
+
   // Rating routes
   app.get("/api/ratings/:productId", async (req, res) => {
     const productId = parseInt(req.params.productId);
     const ratings = await storage.getRatings(productId);
     res.json(ratings);
   });
-  
+
   app.get("/api/ratings/user/:productId", isAuthenticated, async (req, res) => {
     const productId = parseInt(req.params.productId);
     const rating = await storage.getUserRating(req.user!.id, productId);
     res.json(rating || { rating: 0 });
   });
-  
+
   app.post("/api/ratings/:productId", isAuthenticated, async (req, res) => {
     try {
       const productId = parseInt(req.params.productId);
@@ -132,7 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         productId,
         rating: req.body.rating
       });
-      
+
       const updatedProduct = await storage.rateProduct(ratingData);
       res.status(201).json(updatedProduct);
     } catch (error) {
@@ -143,24 +143,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
-  
+
   // Admin only rating routes
   app.put("/api/admin/ratings/:ratingId", isAdmin, async (req, res) => {
     try {
       const ratingId = parseInt(req.params.ratingId);
       const { rating } = req.body;
-      
+
       if (typeof rating !== 'number' || rating < 1 || rating > 5) {
         return res.status(400).json({ message: "Rating must be a number between 1 and 5" });
       }
-      
+
       const updatedProduct = await storage.updateRating(ratingId, rating);
       res.json(updatedProduct);
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
   });
-  
+
   app.delete("/api/admin/ratings/:ratingId", isAdmin, async (req, res) => {
     try {
       const ratingId = parseInt(req.params.ratingId);
@@ -196,23 +196,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           {
             role: "system",
             content: `You are a gift recommendation assistant for an online store called Gift Finder.
-            
+
             Your goal is to help users find the perfect gift by understanding their needs and matching them with products from our catalog.
-            
+
             When analyzing product data:
             1. Consider the relationship between the gift giver and recipient
             2. Match product categories to the recipient's interests
             3. Filter by price range according to the user's budget
             4. Consider special occasions if mentioned
-            
+
             If a user asks a question unrelated to gift recommendations, politely redirect them to gift-related topics.
-            
+
             When recommending products:
             - Be conversational and friendly
             - Give 2-3 specific product recommendations with reasoning
             - Mention key features, price, and why it would make a good gift
             - Format your response in a readable way with product names in bold
-            
+
             If you need more information from the user, ask clear follow-up questions to better understand their needs.`,
           },
           {
@@ -251,7 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!password || password.length < 7) {
         return res.status(400).json({ message: "Password must be at least 7 characters" });
       }
-      
+
       if (!/[A-Z]/.test(password)) {
         return res.status(400).json({ message: "Password must contain at least one capital letter" });
       }
@@ -273,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ipAddress = req.headers['x-forwarded-for'] || 
                         req.socket.remoteAddress || 
                         'unknown';
-      
+
       // Rate limiting check - max 5 entries per hour per IP
       const recentEntries = await storage.checkRecentGiveawayEntriesByIP(String(ipAddress), 60);
       if (recentEntries >= 5) {
@@ -284,48 +284,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get the affiliate link from the referer or query param
       const productLink = req.headers.referer || req.body.productLink || '';
-      
+
       // Validate and sanitize input
       const giveawayData = insertGiveawaySchema.parse({
         email: req.body.email,
-        orderID: req.body.orderID,
+        // orderID: req.body.orderID,  //This line should be removed or modified.
+        orderReceipt: req.body.orderReceipt, // Add a field for order receipt screenshot.
         productLink,
         ipAddress: String(ipAddress)
       });
-      
+
       // Save to database
       const entry = await storage.createGiveawayEntry(giveawayData);
-      
+
       // Send confirmation email
       const emailSent = await sendGiveawayConfirmation(
         giveawayData.email,
-        giveawayData.orderID
+        giveawayData.orderReceipt // Use orderReceipt instead of orderID in email.
       );
-      
+
       // Update entry with email status
       if (emailSent) {
         await storage.updateGiveawayEntryEmailStatus(entry.id, true);
       }
-      
+
       res.status(201).json({ 
         message: "Successfully entered the giveaway!", 
         entryId: entry.id 
       });
     } catch (error) {
       console.error("Giveaway entry error:", error);
-      
+
       if (error instanceof ZodError) {
         return res.status(400).json({ 
           message: "Invalid input", 
           errors: error.errors 
         });
       }
-      
+
       // Handle duplicate entries
       if (error.message && error.message.includes("already entered")) {
         return res.status(400).json({ message: error.message });
       }
-      
+
       res.status(500).json({ message: "Failed to process giveaway entry" });
     }
   });
@@ -366,20 +367,20 @@ export function setupAccountRoutes(app: Express) {
 
     try {
       const { email } = schema.parse(req.body);
-      
+
       // Check if email is already in use
       const existingUser = await storage.getUserByUsername(email);
       if (existingUser && existingUser.id !== req.user?.id) {
         return res.status(400).json({ message: "Email already in use" });
       }
-      
+
       // Update user email
       const updatedUser = await storage.updateUserEmail(req.user?.id, email);
-      
+
       if (!updatedUser) {
         return res.status(500).json({ message: "Failed to update email" });
       }
-      
+
       return res.status(200).json({ message: "Email updated successfully" });
     } catch (error) {
       console.error("Error updating email:", error);
@@ -405,22 +406,22 @@ export function setupAccountRoutes(app: Express) {
 
     try {
       const { currentPassword, newPassword } = schema.parse(req.body);
-      
+
       // Verify current password (this would need to be implemented in auth.ts)
       const passwordValid = await storage.verifyUserPassword(req.user?.id, currentPassword);
-      
+
       if (!passwordValid) {
         return res.status(400).json({ message: "Current password is incorrect" });
       }
-      
+
       // Hash and update new password
       const hashedPassword = await hashPassword(newPassword);
       const updatedUser = await storage.updateUserPassword(req.user?.id, hashedPassword);
-      
+
       if (!updatedUser) {
         return res.status(500).json({ message: "Failed to update password" });
       }
-      
+
       return res.status(200).json({ message: "Password updated successfully" });
     } catch (error) {
       console.error("Error updating password:", error);

@@ -359,7 +359,7 @@ export default function AdminPage() {
                   <TableRow>
                     <TableHead>ID</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Order ID</TableHead>
+                    <TableHead>Order Info</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Email Sent</TableHead>
                   </TableRow>
@@ -369,7 +369,15 @@ export default function AdminPage() {
                     <TableRow key={entry.id}>
                       <TableCell>{entry.id}</TableCell>
                       <TableCell>{entry.email}</TableCell>
-                      <TableCell>{entry.orderID}</TableCell>
+                      <TableCell>
+                        {entry.orderScreenshot ? (
+                          <Button variant="outline" size="sm" onClick={() => window.open(entry.orderScreenshot, '_blank')}>
+                            View Screenshot
+                          </Button>
+                        ) : (
+                          entry.orderID
+                        )}
+                      </TableCell>
                       <TableCell>{new Date(entry.createdAt).toLocaleString()}</TableCell>
                       <TableCell>{entry.emailSent ? 'Yes' : 'No'}</TableCell>
                     </TableRow>

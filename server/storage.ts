@@ -50,6 +50,7 @@ interface InsertRating {
 interface InsertGiveaway {
   email: string;
   orderID: string;
+  orderScreenshot?: string;
   productLink?: string | null;
   ipAddress?: string | null;
 }
@@ -58,6 +59,7 @@ interface GiveawayEntry {
   id: number;
   email: string;
   orderID: string;
+  orderScreenshot?: string;
   productLink: string | null;
   ipAddress: string | null;
   createdAt: string;

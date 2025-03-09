@@ -98,6 +98,7 @@ export const giveawayEntries = pgTable("giveaway_entries", {
   ipAddress: text("ip_address"),
   productLink: text("product_link"),
   emailSent: boolean("email_sent").default(false),
+  orderScreenshot: text("order_screenshot"), // Added orderScreenshot column
 });
 
 export const insertGiveawaySchema = createInsertSchema(giveawayEntries).pick({
@@ -105,6 +106,7 @@ export const insertGiveawaySchema = createInsertSchema(giveawayEntries).pick({
   orderID: true,
   productLink: true,
   ipAddress: true,
+  orderScreenshot: true, // Added orderScreenshot to the schema
 });
 
 export type InsertGiveaway = z.infer<typeof insertGiveawaySchema>;
