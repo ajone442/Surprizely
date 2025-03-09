@@ -208,6 +208,14 @@ export default function BonusPage() {
               </div>
             </form>
           )}
+          <div className="mt-2 text-center">
+            <p className="text-muted-foreground">
+              You will be redirected to {productName} in {countdown} seconds
+            </p>
+          </div>
+          <Button className="mt-4" onClick={handleSkip}>
+            Skip & Continue to Product
+          </Button>
         </div>
       </div>
     </Container>

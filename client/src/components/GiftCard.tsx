@@ -101,7 +101,12 @@ export default function GiftCard({ product }: GiftCardProps) {
         </Button>
         <Button
           className="flex-1"
-          onClick={() => window.open(product.affiliateLink, "_blank")}
+          onClick={() => {
+            if (product.affiliateLink) {
+              const bonusUrl = `/bonus?link=${encodeURIComponent(product.affiliateLink)}&name=${encodeURIComponent(product.name)}`;
+              window.location.href = bonusUrl;
+            }
+          }}
         >
           <ExternalLink className="mr-2 h-4 w-4" />
           View Product
