@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,10 +16,10 @@ const giveawaySchema = z.object({
 type GiveawayData = z.infer<typeof giveawaySchema>;
 
 export default function BonusPage() {
-  const [searchParams] = useSearchParams();
-  const affiliateLink = searchParams.get('link') || '';
-  const productName = searchParams.get('name') || 'this product';
-  const navigate = useNavigate();
+  const [location] = useLocation();
+  const params = new URLSearchParams(location.search);
+  const affiliateLink = params.get('link') || '';
+  const productName = params.get('name') || 'this product';
   const { toast } = useToast();
 
   const [countdown, setCountdown] = useState(5);

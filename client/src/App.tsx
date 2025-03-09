@@ -35,7 +35,9 @@ function Router() {
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/faq" component={FAQPage} />
-      <Route path="/bonus/:affiliateLink?" component={BonusPage} /> {/* Added bonus page route with optional param */}
+      <Route path="/bonus">
+        <BonusPage />
+      </Route>
       <Route path="/admin/giveaway-entries" element={<GiveawayEntriesPage />} />
       <Route component={NotFound} />
     </Switch>
