@@ -105,6 +105,12 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
+  const handleViewClick = () => {
+    setTimeout(() => {
+      window.location.href = product.affiliateLink;
+    }, 10000);
+  };
+
   return (
     <Card className="overflow-hidden h-full flex flex-col">
       {product.imageUrl && (
@@ -157,7 +163,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.location.href = `/bonus?url=${encodeURIComponent(product.affiliateLink)}`}
+            onClick={handleViewClick}
           >
             <ExternalLink className="h-4 w-4 mr-2" />
             View

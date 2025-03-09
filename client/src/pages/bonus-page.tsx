@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Container } from "@/components/ui/container";
@@ -16,100 +17,98 @@ const giveawaySchema = z.object({
 type GiveawayData = z.infer<typeof giveawaySchema>;
 
 export default function BonusPage() {
-  const [location] = useLocation();
-  const params = new URLSearchParams(location.search);
+  const [_, setLocation] = useLocation();
+  const params = new URLSearchParams(window.location.search);
   const affiliateLink = params.get('link') || '';
   const productName = params.get('name') || 'this product';
   const { toast } = useToast();
 
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(10);
   const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState<GiveawayData>({ email: "", orderID: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<GiveawayData>({
-    email: '',
-    orderID: '',
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Countdown timer
   useEffect(() => {
-    if (countdown > 0 && !showForm) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    if (!showForm && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
       return () => clearTimeout(timer);
-    } else if (countdown === 0 && !showForm) {
+    }
+
+    if (!showForm && countdown === 0 && affiliateLink) {
       window.location.href = affiliateLink;
     }
-  }, [countdown, affiliateLink, showForm]);
-
-  const handleSkip = () => {
-    window.location.href = affiliateLink;
-  };
+  }, [countdown, showForm, affiliateLink]);
 
   const handleClaimClick = () => {
     setShowForm(true);
-    setCountdown(0); // Stop the countdown
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-    // Clear error when typing
-    if (errors[name]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
+  const handleSkip = () => {
+    if (affiliateLink) {
+      window.location.href = affiliateLink;
+    } else {
+      setLocation('/');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
-    // Validate form
     try {
-      giveawaySchema.parse(formData);
-      setErrors({});
-      setIsSubmitting(true);
-
-      // Submit to API
-      const response = await fetch('/api/giveaway', {
+      const validatedData = giveawaySchema.parse(formData);
+      
+      const response = await fetch('/api/giveaway-entry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(validatedData),
       });
 
       if (response.ok) {
         toast({
-          title: "Success!",
-          description: "You've been entered into our giveaway!",
+          title: "Entry submitted successfully!",
+          description: "You're now eligible for our monthly giveaway.",
         });
-        // Redirect to affiliate link
+        
+        // Redirect after successful submission
         setTimeout(() => {
-          window.location.href = affiliateLink;
-        }, 1000);
+          if (affiliateLink) {
+            window.location.href = affiliateLink;
+          } else {
+            setLocation('/');
+          }
+        }, 2000);
       } else {
-        const data = await response.json();
-        toast({
-          title: "Error",
-          description: data.message || "Failed to enter giveaway",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
+        const error = await response.json();
+        throw new Error(error.message || 'Something went wrong');
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const newErrors: Record<string, string> = {};
+        // Handle validation errors
         error.errors.forEach(err => {
-          if (err.path) {
-            newErrors[err.path[0]] = err.message;
-          }
+          toast({
+            title: "Validation error",
+            description: `${err.path}: ${err.message}`,
+            variant: "destructive",
+          });
         });
-        setErrors(newErrors);
+      } else if (error instanceof Error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
       }
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -143,14 +142,13 @@ export default function BonusPage() {
                   Claim Bonus
                   <Gift className="h-5 w-5" />
                 </Button>
-
                 <Button 
+                  onClick={handleSkip} 
                   variant="outline"
-                  onClick={handleSkip}
                   size="lg"
                   className="flex items-center gap-2"
                 >
-                  Skip to Product
+                  Skip
                   <ArrowRight className="h-5 w-5" />
                 </Button>
               </div>
@@ -158,67 +156,59 @@ export default function BonusPage() {
           )}
 
           {showForm && (
-            <div className="bg-muted p-6 rounded-lg">
-              <h2 className="text-xl font-semibold mb-4">Enter the Giveaway</h2>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="text-left">
+            <form onSubmit={handleSubmit} className="bg-muted p-6 rounded-lg">
+              <div className="space-y-4">
+                <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input
+                  <Input 
                     id="email"
                     name="email"
                     type="email"
+                    placeholder="your@email.com"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="you@example.com"
-                    className={errors.email ? "border-destructive" : ""}
+                    required
                   />
-                  {errors.email && (
-                    <p className="text-destructive text-sm mt-1">{errors.email}</p>
-                  )}
                 </div>
-
-                <div className="text-left">
+                
+                <div className="space-y-2">
                   <Label htmlFor="orderID">Amazon Order ID</Label>
-                  <Input
+                  <Input 
                     id="orderID"
                     name="orderID"
                     type="text"
+                    placeholder="123-4567890-1234567"
                     value={formData.orderID}
                     onChange={handleChange}
-                    placeholder="Order ID from your Amazon purchase"
-                    className={errors.orderID ? "border-destructive" : ""}
+                    required
                   />
-                  {errors.orderID && (
-                    <p className="text-destructive text-sm mt-1">{errors.orderID}</p>
-                  )}
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Find this in your order confirmation email or order history
+                  <p className="text-xs text-muted-foreground">
+                    Found in your order confirmation email or Orders section of your Amazon account
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                   <Button 
                     type="submit"
-                    disabled={isSubmitting}
                     size="lg"
                     className="flex-1"
+                    disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Submitting..." : "Submit & Continue"}
+                    {isSubmitting ? "Submitting..." : "Submit Entry"}
                   </Button>
-
                   <Button 
                     type="button"
-                    variant="outline"
                     onClick={handleSkip}
+                    variant="outline"
                     size="lg"
                     className="flex-1"
+                    disabled={isSubmitting}
                   >
-                    Skip
+                    Skip to Product
                   </Button>
                 </div>
-              </form>
-            </div>
+              </div>
+            </form>
           )}
         </div>
       </div>
