@@ -157,7 +157,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.open(product.affiliateLink, "_blank")}
+            onClick={() => window.location.href = `/bonus?url=${encodeURIComponent(product.affiliateLink)}`}
           >
             <ExternalLink className="h-4 w-4 mr-2" />
             View

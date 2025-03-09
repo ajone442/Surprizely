@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Container } from "@/components/ui/container";
@@ -22,7 +21,7 @@ export default function BonusPage() {
   const productName = searchParams.get('name') || 'this product';
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [countdown, setCountdown] = useState(5);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,7 +53,7 @@ export default function BonusPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error when typing
     if (errors[name]) {
       setErrors(prev => {
@@ -67,13 +66,13 @@ export default function BonusPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate form
     try {
       giveawaySchema.parse(formData);
       setErrors({});
       setIsSubmitting(true);
-      
+
       // Submit to API
       const response = await fetch('/api/giveaway', {
         method: 'POST',
@@ -82,7 +81,7 @@ export default function BonusPage() {
         },
         body: JSON.stringify(formData),
       });
-      
+
       if (response.ok) {
         toast({
           title: "Success!",
@@ -122,19 +121,19 @@ export default function BonusPage() {
           <Gift className="h-16 w-16 text-primary mx-auto mb-4" />
           <h1 className="text-3xl font-bold mb-2">🎉 Surprise Bonus!</h1>
           <p className="text-xl mb-4">Before you visit {productName}...</p>
-          
+
           {!showForm && (
             <div className="bg-muted p-6 rounded-lg mb-6">
               <p className="text-lg mb-4">
                 Enter our exclusive giveaway by sharing your Amazon order ID after purchase. 
                 Win gift cards and premium products monthly!
               </p>
-              
+
               <div className="flex items-center justify-center gap-4 mb-4">
                 <Timer className="h-6 w-6 text-primary" />
                 <p className="text-2xl font-semibold">Redirecting in {countdown}s</p>
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button 
                   onClick={handleClaimClick}
@@ -144,7 +143,7 @@ export default function BonusPage() {
                   Claim Bonus
                   <Gift className="h-5 w-5" />
                 </Button>
-                
+
                 <Button 
                   variant="outline"
                   onClick={handleSkip}
@@ -157,11 +156,11 @@ export default function BonusPage() {
               </div>
             </div>
           )}
-          
+
           {showForm && (
             <div className="bg-muted p-6 rounded-lg">
               <h2 className="text-xl font-semibold mb-4">Enter the Giveaway</h2>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="text-left">
                   <Label htmlFor="email">Email Address</Label>
@@ -178,7 +177,7 @@ export default function BonusPage() {
                     <p className="text-destructive text-sm mt-1">{errors.email}</p>
                   )}
                 </div>
-                
+
                 <div className="text-left">
                   <Label htmlFor="orderID">Amazon Order ID</Label>
                   <Input
@@ -197,7 +196,7 @@ export default function BonusPage() {
                     Find this in your order confirmation email or order history
                   </p>
                 </div>
-                
+
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <Button 
                     type="submit"
@@ -207,7 +206,7 @@ export default function BonusPage() {
                   >
                     {isSubmitting ? "Submitting..." : "Submit & Continue"}
                   </Button>
-                  
+
                   <Button 
                     type="button"
                     variant="outline"
