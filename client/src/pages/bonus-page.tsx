@@ -1,19 +1,11 @@
-import React, { useState, useEffect } from "react";
+import * as React from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
 import { Gift, ArrowRight, Timer } from "lucide-react";
-
-const giveawaySchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  orderID: z.string().min(5, "Order ID must be at least 5 characters"),
-});
-
-type GiveawayData = z.infer<typeof giveawaySchema>;
+import { useToast } from "@/hooks/use-toast";
+import { GiveawayEntryForm } from "@/components/GiveawayEntryForm";
 
 export default function BonusPage() {
   const params = new URLSearchParams(window.location.search);
@@ -23,7 +15,7 @@ export default function BonusPage() {
 
   const [countdown, setCountdown] = useState(10);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<GiveawayData>({ email: "", orderID: "" });
+  const [formData, setFormData] = useState({ email: "", orderID: "" }); //formData type is removed as it's not used directly here.
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -43,11 +35,6 @@ export default function BonusPage() {
     setShowForm(true);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
   const handleSkip = () => {
     if (affiliateLink) {
       window.location.href = affiliateLink;
@@ -56,60 +43,6 @@ export default function BonusPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const validatedData = giveawaySchema.parse(formData);
-
-      const response = await fetch('/api/giveaway-entry', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(validatedData),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Entry submitted successfully!",
-          description: "You're now eligible for our monthly giveaway.",
-        });
-
-        // Redirect after successful submission
-        setTimeout(() => {
-          if (affiliateLink) {
-            window.location.href = affiliateLink;
-          } else {
-            setLocation('/');
-          }
-        }, 2000);
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Something went wrong');
-      }
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        // Handle validation errors
-        error.errors.forEach(err => {
-          toast({
-            title: "Validation error",
-            description: `${err.path}: ${err.message}`,
-            variant: "destructive",
-          });
-        });
-      } else if (error instanceof Error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <Container className="py-12">
@@ -154,59 +87,9 @@ export default function BonusPage() {
           )}
 
           {showForm && (
-            <form onSubmit={handleSubmit} className="bg-muted p-6 rounded-lg">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input 
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="orderID">Amazon Order ID</Label>
-                  <Input 
-                    id="orderID"
-                    name="orderID"
-                    type="text"
-                    placeholder="123-4567890-1234567"
-                    value={formData.orderID}
-                    onChange={handleChange}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Found in your order confirmation email or Orders section of your Amazon account
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <Button 
-                    type="submit"
-                    size="lg"
-                    className="flex-1"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? "Submitting..." : "Submit Entry"}
-                  </Button>
-                  <Button 
-                    type="button"
-                    onClick={handleSkip}
-                    variant="outline"
-                    size="lg"
-                    className="flex-1"
-                    disabled={isSubmitting}
-                  >
-                    Skip to Product
-                  </Button>
-                </div>
-              </div>
-            </form>
+            <div className="bg-muted p-6 rounded-lg">
+              <GiveawayEntryForm onSuccess={handleSkip} />
+            </div>
           )}
           <div className="mt-2 text-center">
             <p className="text-muted-foreground">
