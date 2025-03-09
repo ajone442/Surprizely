@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Container } from "@/components/ui/container";
@@ -63,7 +62,7 @@ export default function BonusPage() {
 
     try {
       const validatedData = giveawaySchema.parse(formData);
-      
+
       const response = await fetch('/api/giveaway-entry', {
         method: 'POST',
         headers: {
@@ -77,7 +76,7 @@ export default function BonusPage() {
           title: "Entry submitted successfully!",
           description: "You're now eligible for our monthly giveaway.",
         });
-        
+
         // Redirect after successful submission
         setTimeout(() => {
           if (affiliateLink) {
@@ -169,7 +168,7 @@ export default function BonusPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="orderID">Amazon Order ID</Label>
                   <Input 
