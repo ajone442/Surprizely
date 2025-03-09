@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -5,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Container } from "@/components/Container";
 import { ArrowLeft, Gift, Download } from "lucide-react";
-import { Container } from "@/components/ui/container";
-import { Gift, ArrowLeft, Download } from "lucide-react";
 
 type GiveawayEntry = {
   id: number;
@@ -51,41 +50,37 @@ export default function GiveawayEntriesPage() {
 
   const handleExportCSV = () => {
     if (!entries.length) return;
-
-    // Create CSV content
-    const headers = ["ID", "Email", "Order ID", "Date", "Email Sent"];
-    const csvRows = [
-      headers.join(","),
-      ...entries.map(entry => [
-        entry.id,
-        entry.email,
-        entry.orderID,
-        new Date(entry.createdAt).toLocaleString(),
-        entry.emailSent ? "Yes" : "No"
-      ].join(","))
-    ];
-    const csvContent = csvRows.join("\n");
-
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    // Add headers
+    csvContent += "ID,Email,Order ID,Date,Email Sent\n";
+    
+    // Add rows
+    entries.forEach(entry => {
+      csvContent += `${entry.id},${entry.email},${entry.orderID},${new Date(entry.createdAt).toLocaleString()},${entry.emailSent ? 'Yes' : 'No'}\n`;
+    });
+    
     // Create download link
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `giveaway-entries-${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `giveaway-entries-${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    <Container className="py-12">
+    <Container className="py-10">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Gift className="h-6 w-6 text-primary" />
+          <div className="space-y-1">
             <CardTitle>Giveaway Entries</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              View all entries to your giveaway.
+            </p>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex flex-row gap-2">
             <Button 
               variant="outline" 
               size="sm"
@@ -94,7 +89,6 @@ export default function GiveawayEntriesPage() {
             >
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
-
             <Button 
               size="sm"
               onClick={handleExportCSV}
