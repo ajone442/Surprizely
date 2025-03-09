@@ -288,24 +288,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate and sanitize input
       const giveawayData = insertGiveawaySchema.parse({
         email: req.body.email,
-        // orderID: req.body.orderID,  //This line should be removed or modified.
-        orderReceipt: req.body.orderReceipt, // Add a field for order receipt screenshot.
+        orderID: req.body.orderID || "Screenshot provided",
+        orderScreenshot: req.body.orderScreenshot,
         productLink,
         ipAddress: String(ipAddress)
       });
 
+      console.log("Giveaway entry data:", giveawayData);
+
       // Save to database
       const entry = await storage.createGiveawayEntry(giveawayData);
 
-      // Send confirmation email
-      const emailSent = await sendGiveawayConfirmation(
-        giveawayData.email,
-        giveawayData.orderReceipt // Use orderReceipt instead of orderID in email.
-      );
+      // Send confirmation email if configured
+      try {
+        const emailSent = await sendGiveawayConfirmation(
+          giveawayData.email,
+          giveawayData.orderScreenshot || giveawayData.orderID
+        );
 
-      // Update entry with email status
-      if (emailSent) {
-        await storage.updateGiveawayEntryEmailStatus(entry.id, true);
+        // Update entry with email status
+        if (emailSent) {
+          await storage.updateGiveawayEntryEmailStatus(entry.id, true);
+        }
+      } catch (emailError) {
+        console.error("Failed to send confirmation email:", emailError);
+        // Continue without failing the request
       }
 
       res.status(201).json({ 

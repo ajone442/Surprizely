@@ -10,7 +10,6 @@ import { Upload, Check } from 'lucide-react';
 export function GiveawayEntryForm() {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
-  const [orderID, setOrderID] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -40,40 +39,36 @@ export function GiveawayEntryForm() {
       });
       return;
     }
-
-    if (!orderID && !screenshot) {
+    
+    if (!screenshot) {
       toast({
-        title: "Order information required",
-        description: "Please enter an order ID or upload a screenshot of your order.",
+        title: "Receipt screenshot required",
+        description: "Please upload a screenshot of your order receipt.",
         variant: "destructive"
       });
       return;
     }
-
+    
     setUploading(true);
     
     try {
       let screenshotUrl = '';
       
-      // If there's a screenshot, upload it first
-      if (screenshot) {
-        const formData = new FormData();
-        formData.append('file', screenshot);
-        
-        // This is a placeholder. You would need to implement a file upload endpoint
-        // that returns the URL of the uploaded file
-        const uploadResponse = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (!uploadResponse.ok) {
-          throw new Error('Failed to upload screenshot');
-        }
-        
-        const uploadData = await uploadResponse.json();
-        screenshotUrl = uploadData.url;
+      // Upload the screenshot first
+      const formData = new FormData();
+      formData.append('file', screenshot);
+      
+      const uploadResponse = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload screenshot');
       }
+      
+      const uploadData = await uploadResponse.json();
+      screenshotUrl = uploadData.url;
       
       // Now submit the giveaway entry
       const response = await fetch('/api/giveaway', {
@@ -83,8 +78,7 @@ export function GiveawayEntryForm() {
         },
         body: JSON.stringify({
           email,
-          orderID: orderID || 'Screenshot provided',
-          orderScreenshot: screenshotUrl || null
+          orderScreenshot: screenshotUrl
         })
       });
       
@@ -102,7 +96,7 @@ export function GiveawayEntryForm() {
     } catch (error) {
       toast({
         title: "Submission failed",
-        description: error.message || "There was an error submitting your entry. Please try again.",
+        description: error.message || "Something went wrong. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -114,25 +108,20 @@ export function GiveawayEntryForm() {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
-          <CardTitle className="text-center text-2xl">Thank You!</CardTitle>
-          <CardDescription className="text-center">
-            Your giveaway entry has been submitted.
+          <CardTitle>Thank You!</CardTitle>
+          <CardDescription>
+            Your giveaway entry has been submitted successfully.
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-center">
-          <div className="flex justify-center mb-4">
-            <Check className="text-green-500 h-16 w-16" />
+        <CardContent className="text-center py-6">
+          <div className="rounded-full bg-primary/10 p-3 text-primary w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+            <Check className="h-6 w-6" />
           </div>
-          <p>We've received your entry for the giveaway. Good luck!</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            A confirmation email has been sent to {email}.
+          <p>We've received your entry. Good luck!</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Winners will be notified via email.
           </p>
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <Button variant="outline" onClick={() => window.location.href = "/"}>
-            Return to Home
-          </Button>
-        </CardFooter>
       </Card>
     );
   }
@@ -160,18 +149,7 @@ export function GiveawayEntryForm() {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="orderID">Order ID (optional if screenshot provided)</Label>
-            <Input
-              id="orderID"
-              type="text"
-              placeholder="Enter your order ID"
-              value={orderID}
-              onChange={(e) => setOrderID(e.target.value)}
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label>Order Screenshot</Label>
+            <Label>Order Receipt</Label>
             <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center">
               {previewUrl ? (
                 <div className="space-y-2">
@@ -196,7 +174,7 @@ export function GiveawayEntryForm() {
                 <div className="space-y-2">
                   <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    Upload a screenshot of your order receipt
+                    Upload a screenshot of your order receipt from Amazon, Etsy, or any other store
                   </p>
                   <Button 
                     type="button" 

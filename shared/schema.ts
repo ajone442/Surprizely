@@ -93,21 +93,17 @@ export type Rating = typeof ratings.$inferSelect;
 export const giveawayEntries = pgTable("giveaway_entries", {
   id: serial("id").primaryKey(),
   email: text("email").notNull(),
-  orderID: text("order_id").notNull(),
+  orderID: text("order_id"),
   createdAt: text("created_at").notNull().default(new Date().toISOString()),
   ipAddress: text("ip_address"),
   productLink: text("product_link"),
   emailSent: boolean("email_sent").default(false),
-  orderScreenshot: text("order_screenshot"), // Added orderScreenshot column
+  orderScreenshot: text("order_screenshot")
 });
 
-export const insertGiveawaySchema = createInsertSchema(giveawayEntries).pick({
-  email: true,
-  orderID: true,
-  productLink: true,
-  ipAddress: true,
-  orderScreenshot: true, // Added orderScreenshot to the schema
-});
+export const insertGiveawaySchema = createInsertSchema(giveawayEntries)
+  .omit({ id: true, createdAt: true, emailSent: true })
+  .partial({ orderID: true, ipAddress: true, productLink: true, orderScreenshot: true });
 
 export type InsertGiveaway = z.infer<typeof insertGiveawaySchema>;
 export type GiveawayEntry = typeof giveawayEntries.$inferSelect;

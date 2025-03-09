@@ -322,7 +322,7 @@ export class MemStorage implements IStorage {
     };
     this.giveawayEntries.set(id, newEntry);
     // Placeholder for sending email - replace with actual email sending logic
-    await this.sendEmail(newEntry.email, newEntry.orderID, newEntry.productLink);
+    await this.sendEmail(newEntry.email, newEntry.orderID || "Screenshot provided", newEntry.productLink);
     return newEntry;
   }
 

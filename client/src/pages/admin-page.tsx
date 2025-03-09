@@ -375,7 +375,7 @@ export default function AdminPage() {
                             View Screenshot
                           </Button>
                         ) : (
-                          entry.orderID
+                          entry.orderID || "No order info"
                         )}
                       </TableCell>
                       <TableCell>{new Date(entry.createdAt).toLocaleString()}</TableCell>
