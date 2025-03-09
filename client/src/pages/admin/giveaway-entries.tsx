@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Container } from "@/components/Container";
+import { Container } from "@/components/ui/container";
 import { ArrowLeft, Gift, Download } from "lucide-react";
 
 type GiveawayEntry = {
