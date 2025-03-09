@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,7 @@ export default function GiveawayEntriesPage() {
   const [entries, setEntries] = useState<GiveawayEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [location, setLocation] = useLocation();
 
   useEffect(() => {
     const fetchEntries = async () => {
@@ -29,7 +29,7 @@ export default function GiveawayEntriesPage() {
 
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) {
-            navigate('/auth');
+            setLocation('/auth');
             return;
           }
           throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -45,7 +45,7 @@ export default function GiveawayEntriesPage() {
     };
 
     fetchEntries();
-  }, [navigate]);
+  }, [setLocation]);
 
   const handleExportCSV = () => {
     if (!entries.length) return;
@@ -87,7 +87,7 @@ export default function GiveawayEntriesPage() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => navigate('/admin')}
+              onClick={() => setLocation('/admin')}
               className="flex items-center gap-1"
             >
               <ArrowLeft className="h-4 w-4" /> Back
