@@ -17,7 +17,6 @@ const giveawaySchema = z.object({
 type GiveawayData = z.infer<typeof giveawaySchema>;
 
 export default function BonusPage() {
-  const [_, setLocation] = useLocation();
   const params = new URLSearchParams(window.location.search);
   const affiliateLink = params.get('link') || '';
   const productName = params.get('name') || 'this product';
@@ -54,7 +53,7 @@ export default function BonusPage() {
     if (affiliateLink) {
       window.location.href = affiliateLink;
     } else {
-      setLocation('/');
+      window.location.href = '/';
     }
   };
 

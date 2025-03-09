@@ -106,9 +106,10 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   const handleViewClick = () => {
-    setTimeout(() => {
-      window.location.href = product.affiliateLink;
-    }, 10000);
+    if (product.affiliateLink) {
+      const bonusUrl = `/bonus?link=${encodeURIComponent(product.affiliateLink)}&name=${encodeURIComponent(product.name)}`;
+      window.location.href = bonusUrl;
+    }
   };
 
   return (
