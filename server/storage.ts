@@ -8,7 +8,8 @@ import fs from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+// Allow configuring data directory through environment variable
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const PRODUCTS_FILE = path.join(DATA_DIR, "products.json");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const RATINGS_FILE = path.join(DATA_DIR, "ratings.json");
@@ -111,9 +112,8 @@ interface IStorage {
   updateRating(ratingId: number, newRating: number): Promise<Product | undefined>;
   deleteRating(ratingId: number): Promise<Product | undefined>;
   createGiveawayEntry(entryData: InsertGiveaway): Promise<GiveawayEntry>;
-  updateGiveawayEntryEmailStatus(id: number, emailSent: boolean): Promise<GiveawayEntry>;
+  updateGiveawayEntryStatus(id: number, status: 'pending' | 'approved' | 'rejected'): Promise<GiveawayEntry | undefined>;
   getGiveawayEntries(): Promise<GiveawayEntry[]>;
-  checkRecentGiveawayEntriesByIP(ipAddress: string, minutes?: number): Promise<number>;
   sessionStore: session.Store;
 }
 
@@ -133,21 +133,16 @@ interface InsertRating {
 
 interface InsertGiveaway {
   email: string;
-  orderID: string;
-  orderScreenshot?: string;
-  productLink?: string | null;
-  ipAddress?: string | null;
+  receiptImage: string;
+  status?: 'pending' | 'approved' | 'rejected';
 }
 
 interface GiveawayEntry {
   id: number;
   email: string;
-  orderID: string;
-  orderScreenshot?: string;
-  productLink: string | null;
-  ipAddress: string | null;
-  createdAt: string;
-  emailSent: boolean;
+  receiptImage: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
 }
 
 export class MemStorage implements IStorage {
@@ -499,40 +494,30 @@ export class MemStorage implements IStorage {
   }
 
   async createGiveawayEntry(entryData: InsertGiveaway): Promise<GiveawayEntry> {
-    const id = this.currentGiveawayEntryId++;
-    const newEntry: GiveawayEntry = {
-      id,
-      ...entryData,
-      productLink: entryData.productLink || null,
-      ipAddress: entryData.ipAddress || null,
-      createdAt: new Date().toISOString(),
-      emailSent: false,
+    const entry: GiveawayEntry = {
+      id: this.currentGiveawayEntryId++,
+      email: entryData.email,
+      receiptImage: entryData.receiptImage,
+      status: entryData.status || 'pending',
+      submittedAt: new Date().toISOString()
     };
-    this.giveawayEntries.set(id, newEntry);
-    // Placeholder for sending email - replace with actual email sending logic
-    await this.sendEmail(newEntry.email, newEntry.orderID || "Screenshot provided", newEntry.productLink);
+
+    this.giveawayEntries.set(entry.id, entry);
     this.saveData();
-    return newEntry;
+    return entry;
   }
 
-  async updateGiveawayEntryEmailStatus(id: number, emailSent: boolean): Promise<GiveawayEntry> {
+  async updateGiveawayEntryStatus(id: number, status: 'pending' | 'approved' | 'rejected'): Promise<GiveawayEntry | undefined> {
     const entry = this.giveawayEntries.get(id);
-    if (!entry) throw new Error("Giveaway entry not found");
-    const updatedEntry = { ...entry, emailSent };
-    this.giveawayEntries.set(id, updatedEntry);
+    if (!entry) return undefined;
+
+    entry.status = status;
     this.saveData();
-    return updatedEntry;
+    return entry;
   }
 
   async getGiveawayEntries(): Promise<GiveawayEntry[]> {
     return Array.from(this.giveawayEntries.values());
-  }
-
-  async checkRecentGiveawayEntriesByIP(ipAddress: string, minutes: number = 60): Promise<number> {
-    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000).toISOString();
-    return Array.from(this.giveawayEntries.values())
-      .filter(entry => entry.ipAddress === ipAddress && new Date(entry.createdAt) > new Date(cutoffTime))
-      .length;
   }
 
   // Placeholder for email sending functionality - replace with actual implementation using Flask-Mail or similar

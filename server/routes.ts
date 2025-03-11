@@ -62,11 +62,14 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express, storage: any): Promise<Server> {
   setupAuth(app);
 
   // Initialize email transporter if environment variables are set
   initEmailTransporter();
+
+  // Serve uploaded files
+  app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
   app.get("/api/products", async (_req: Request, res: Response) => {
     const products = await storage.getProducts();
@@ -376,24 +379,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Giveaway entry route with file upload handling
-  app.post('/api/giveaway/enter', upload.single('orderScreenshot'), async (req: Request, res: Response) => {
+  app.post('/api/giveaway/enter', upload.single('receipt'), async (req: Request, res: Response) => {
     try {
-      if (!req.file || !req.body.email) {
-        return res.status(400).json({ error: 'Missing required fields' });
+      const { email } = req.body;
+
+      if (!req.file) {
+        return res.status(400).json({ error: "Receipt image is required" });
       }
 
-      const entry: InsertGiveaway = {
-        email: req.body.email,
+      const entry = await storage.createGiveawayEntry({
+        email,
         receiptImage: req.file.filename,
-        status: 'pending',
-        submittedAt: new Date().toISOString()
-      };
+      });
 
-      const result = await storage.createGiveawayEntry(entry);
-      res.json({ success: true, entry: result });
-    } catch (error: unknown) {
-      console.error('Error creating giveaway entry:', error);
-      res.status(500).json({ error: 'Failed to create giveaway entry' });
+      res.json(entry);
+    } catch (error) {
+      console.error("Error creating giveaway entry:", error);
+      res.status(500).json({ error: "Failed to create giveaway entry" });
+    }
+  });
+
+  app.put("/api/admin/giveaway-entries/:id/status", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!['pending', 'approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const entry = await storage.updateGiveawayEntryStatus(parseInt(id), status);
+      if (!entry) {
+        return res.status(404).json({ error: "Entry not found" });
+      }
+
+      res.json(entry);
+    } catch (error) {
+      console.error("Error updating giveaway entry status:", error);
+      res.status(500).json({ error: "Failed to update entry status" });
     }
   });
 

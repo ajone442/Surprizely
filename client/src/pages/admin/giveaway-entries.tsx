@@ -1,26 +1,25 @@
-
 import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { ArrowLeft, Gift, Download } from "lucide-react";
+import { ArrowLeft, Download, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 type GiveawayEntry = {
   id: number;
   email: string;
-  orderID: string;
-  createdAt: string;
-  ipAddress?: string;
-  productLink?: string;
-  emailSent: boolean;
+  receiptImage: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
 };
 
 export default function GiveawayEntriesPage() {
   const [entries, setEntries] = useState<GiveawayEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
@@ -53,11 +52,11 @@ export default function GiveawayEntriesPage() {
     
     let csvContent = "data:text/csv;charset=utf-8,";
     // Add headers
-    csvContent += "ID,Email,Order ID,Date,Email Sent\n";
+    csvContent += "ID,Email,Status,Submitted At\n";
     
     // Add rows
     entries.forEach(entry => {
-      csvContent += `${entry.id},${entry.email},${entry.orderID},${new Date(entry.createdAt).toLocaleString()},${entry.emailSent ? 'Yes' : 'No'}\n`;
+      csvContent += `${entry.id},${entry.email},${entry.status},${new Date(entry.submittedAt).toLocaleString()}\n`;
     });
     
     // Create download link
@@ -70,6 +69,10 @@ export default function GiveawayEntriesPage() {
     document.body.removeChild(link);
   };
 
+  const handleViewImage = (imagePath: string) => {
+    setSelectedImage(imagePath);
+  };
+
   return (
     <Container className="py-10">
       <Card>
@@ -77,7 +80,7 @@ export default function GiveawayEntriesPage() {
           <div className="space-y-1">
             <CardTitle>Giveaway Entries</CardTitle>
             <p className="text-sm text-muted-foreground">
-              View all entries to your giveaway.
+              View and manage all giveaway entries.
             </p>
           </div>
           <div className="flex flex-row gap-2">
@@ -123,9 +126,9 @@ export default function GiveawayEntriesPage() {
                   <TableRow>
                     <TableHead>ID</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Order ID</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Email Sent</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Submitted</TableHead>
+                    <TableHead>Receipt</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -133,9 +136,44 @@ export default function GiveawayEntriesPage() {
                     <TableRow key={entry.id}>
                       <TableCell>{entry.id}</TableCell>
                       <TableCell>{entry.email}</TableCell>
-                      <TableCell>{entry.orderID}</TableCell>
-                      <TableCell>{new Date(entry.createdAt).toLocaleString()}</TableCell>
-                      <TableCell>{entry.emailSent ? 'Yes' : 'No'}</TableCell>
+                      <TableCell>
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                          entry.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          entry.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
+                        </span>
+                      </TableCell>
+                      <TableCell>{new Date(entry.submittedAt).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="flex items-center gap-1"
+                              onClick={() => handleViewImage(`/uploads/${entry.receiptImage}`)}
+                            >
+                              <Eye className="h-4 w-4" /> View
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Receipt Image</DialogTitle>
+                            </DialogHeader>
+                            {selectedImage && (
+                              <div className="mt-4">
+                                <img 
+                                  src={selectedImage} 
+                                  alt="Receipt" 
+                                  className="max-w-full rounded-lg"
+                                />
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
