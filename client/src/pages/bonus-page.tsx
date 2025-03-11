@@ -55,7 +55,7 @@ export default function BonusPage() {
           {!showForm && (
             <div className="bg-muted p-6 rounded-lg mb-6">
               <p className="text-lg mb-4">
-                Enter our exclusive giveaway by sharing your Amazon order ID after purchase. 
+                Enter our exclusive giveaway by sharing your Order Receipt after purchase. 
                 Win gift cards and premium products monthly!
               </p>
 
