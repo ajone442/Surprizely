@@ -1,93 +1,95 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { EventEmitter } from 'events';
 import { products, users, wishlist, ratings, giveawayEntries, Product, User, InsertProduct, InsertWishlist, InsertRating, Rating, InsertGiveaway, GiveawayEntry } from "@shared/schema";
 import session from "express-session";
 import fs from "fs";
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const PRODUCTS_FILE = path.join(DATA_DIR, "products.json");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const RATINGS_FILE = path.join(DATA_DIR, "ratings.json");
 const WISHLIST_FILE = path.join(DATA_DIR, "wishlist.json");
+const GIVEAWAY_FILE = path.join(DATA_DIR, "giveaway.json");
 const SESSIONS_FILE = path.join(DATA_DIR, "sessions.json");
-const GIVEAWAY_ENTRIES_FILE = path.join(DATA_DIR, "giveawayEntries.json");
 
-// Ensure data directory exists
+// Create data directory if it doesn't exist
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Simple file-based session store
-class FileSessionStore implements session.Store {
-  private sessions: Map<string, any>;
-  private saveInterval: ReturnType<typeof setInterval>;
+class FileStore extends EventEmitter implements session.Store {
+  private sessions: { [key: string]: any } = {};
 
   constructor() {
-    this.sessions = new Map();
+    super();
     this.loadSessions();
-    
-    // Save sessions periodically
-    this.saveInterval = setInterval(() => this.saveSessions(), 5000);
   }
 
   private loadSessions() {
     try {
       if (fs.existsSync(SESSIONS_FILE)) {
-        const data = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
-        this.sessions = new Map(Object.entries(data));
+        const data = fs.readFileSync(SESSIONS_FILE, 'utf8');
+        this.sessions = JSON.parse(data);
       }
     } catch (error) {
       console.error('Error loading sessions:', error);
+      this.sessions = {};
     }
   }
 
   private saveSessions() {
     try {
-      const data = Object.fromEntries(this.sessions);
-      fs.writeFileSync(SESSIONS_FILE, JSON.stringify(data));
+      fs.writeFileSync(SESSIONS_FILE, JSON.stringify(this.sessions, null, 2));
     } catch (error) {
       console.error('Error saving sessions:', error);
     }
   }
 
-  get(sid: string, callback: (err: any, session?: any) => void): void {
-    const session = this.sessions.get(sid);
+  get = (sid: string, callback: (err: any, session?: any) => void) => {
+    const session = this.sessions[sid];
     callback(null, session);
-  }
+  };
 
-  set(sid: string, session: any, callback?: (err?: any) => void): void {
-    this.sessions.set(sid, session);
+  set = (sid: string, session: any, callback?: (err?: any) => void) => {
+    this.sessions[sid] = session;
+    this.saveSessions();
     if (callback) callback();
-  }
+  };
 
-  destroy(sid: string, callback?: (err?: any) => void): void {
-    this.sessions.delete(sid);
+  destroy = (sid: string, callback?: (err?: any) => void) => {
+    delete this.sessions[sid];
+    this.saveSessions();
     if (callback) callback();
-  }
+  };
 
-  touch(sid: string, session: any, callback?: () => void): void {
-    this.sessions.set(sid, session);
+  all = (callback: (err: any, obj?: { [sid: string]: any }) => void) => {
+    callback(null, this.sessions);
+  };
+
+  clear = (callback?: (err?: any) => void) => {
+    this.sessions = {};
+    this.saveSessions();
     if (callback) callback();
-  }
+  };
 
-  all(callback: (err: any, obj?: { [sid: string]: any; } | null) => void): void {
-    const obj = Object.fromEntries(this.sessions);
-    callback(null, obj);
-  }
+  length = (callback: (err: any, length: number) => void) => {
+    callback(null, Object.keys(this.sessions).length);
+  };
 
-  length(callback: (err: any, length?: number) => void): void {
-    callback(null, this.sessions.size);
-  }
-
-  clear(callback?: (err?: any) => void): void {
-    this.sessions.clear();
+  touch = (sid: string, session: any, callback?: () => void) => {
+    if (this.sessions[sid]) {
+      this.sessions[sid] = session;
+      this.saveSessions();
+    }
     if (callback) callback();
-  }
+  };
 }
 
-export interface IStorage {
+interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -172,7 +174,7 @@ export class MemStorage implements IStorage {
     this.currentGiveawayEntryId = 1;
     
     // Use our custom file-based session storage
-    this.sessionStore = new FileSessionStore();
+    this.sessionStore = new FileStore();
 
     // Load saved data
     this.loadData();
@@ -227,8 +229,8 @@ export class MemStorage implements IStorage {
       }
 
       // Load giveaway entries
-      if (fs.existsSync(GIVEAWAY_ENTRIES_FILE)) {
-        const giveawayEntriesData = JSON.parse(fs.readFileSync(GIVEAWAY_ENTRIES_FILE, 'utf-8'));
+      if (fs.existsSync(GIVEAWAY_FILE)) {
+        const giveawayEntriesData = JSON.parse(fs.readFileSync(GIVEAWAY_FILE, 'utf-8'));
         giveawayEntriesData.forEach((entry: GiveawayEntry) => {
           this.giveawayEntries.set(entry.id, entry);
           if (entry.id >= this.currentGiveawayEntryId) {
@@ -267,7 +269,7 @@ export class MemStorage implements IStorage {
       fs.writeFileSync(WISHLIST_FILE, JSON.stringify(wishlistObj, null, 2));
 
       // Save giveaway entries
-      fs.writeFileSync(GIVEAWAY_ENTRIES_FILE, JSON.stringify(Array.from(this.giveawayEntries.values()), null, 2));
+      fs.writeFileSync(GIVEAWAY_FILE, JSON.stringify(Array.from(this.giveawayEntries.values()), null, 2));
     } catch (error) {
       console.error("Error saving data:", error);
     }
