@@ -1,68 +1,90 @@
-import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
-import session from "express-session";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
-import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
+import express from 'express';
+import passport from 'passport';
+import { Strategy as LocalStrategy } from 'passport-local';
+import bcrypt from 'bcryptjs';
+import session from 'express-session';
+import { storage } from './storage.js';
 
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    interface User {
+      id: number;
+      username: string;
+      password: string;
+      isAdmin: boolean;
+    }
   }
 }
 
-const scryptAsync = promisify(scrypt);
-
-export async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
+export async function hashPassword(password: string): Promise<string> {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(password, salt);
 }
 
-export async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+export async function comparePasswords(password: string, hashedPassword: string): Promise<boolean> {
+  return bcrypt.compare(password, hashedPassword);
 }
 
-export function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
-
-  // Configure session middleware
+export async function setupAuth(app: express.Express) {
+  // Session middleware
   app.use(session({
-    store: storage.sessionStore,
-    secret: process.env.SESSION_SECRET || 'development_secret',
+    secret: process.env.SESSION_SECRET || 'dev-secret-key',
     resave: false,
     saveUninitialized: false,
-    proxy: process.env.NODE_ENV === 'production', // Trust proxy in production
-    cookie: { 
+    store: storage.sessionStore,
+    cookie: {
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
   }));
 
+  // Initialize passport
   app.use(passport.initialize());
   app.use(passport.session());
 
-  passport.use(
-    new LocalStrategy(async (username, password, done) => {
+  // Configure local strategy
+  passport.use(new LocalStrategy(async (username, password, done) => {
+    try {
       const user = await storage.getUserByUsername(username);
-      if (!user || !(await comparePasswords(password, user.password))) {
-        return done(null, false);
-      } else {
-        return done(null, user);
+      if (!user) {
+        return done(null, false, { message: 'Invalid username or password' });
       }
-    }),
-  );
 
-  passport.serializeUser((user, done) => done(null, user.id));
+      const isValid = await comparePasswords(password, user.password);
+      if (!isValid) {
+        return done(null, false, { message: 'Invalid username or password' });
+      }
+
+      return done(null, user);
+    } catch (error) {
+      return done(error);
+    }
+  }));
+
+  // Serialize user for the session
+  passport.serializeUser((user: any, done) => {
+    done(null, user.id);
+  });
+
+  // Deserialize user from the session
   passport.deserializeUser(async (id: number, done) => {
-    const user = await storage.getUser(id);
-    done(null, user);
+    try {
+      const user = await storage.getUser(id);
+      done(null, user);
+    } catch (error) {
+      done(error);
+    }
+  });
+
+  // Authentication middleware
+  app.post('/api/login', passport.authenticate('local'), (req, res) => {
+    res.json(req.user);
+  });
+
+  app.post('/api/logout', (req, res) => {
+    req.logout(() => {
+      res.sendStatus(200);
+    });
   });
 
   app.post("/api/register", async (req, res, next) => {
@@ -86,19 +108,23 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
-  });
-
-  app.post("/api/logout", (req, res, next) => {
-    req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
-    });
-  });
-
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+  app.get("/api/user", isAuthenticated, (req, res) => {
     res.json(req.user);
   });
+}
+
+// Middleware to check if user is authenticated
+export function isAuthenticated(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: 'Not authenticated' });
+}
+
+// Middleware to check if user is admin
+export function isAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (req.isAuthenticated() && req.user && (req.user as any).isAdmin) {
+    return next();
+  }
+  res.status(403).json({ error: 'Not authorized' });
 }

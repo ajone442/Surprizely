@@ -1,44 +1,41 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth } from "./auth";
-import { storage } from "./storage";
-import openai from "./openai";
-import { insertProductSchema, insertWishlistSchema, insertRatingSchema, insertGiveawaySchema } from "@shared/schema";
-import { ZodError } from "zod";
-import { parseProductUrl } from "./product-parser";
-import passport from 'passport';
-import { hashPassword } from "./auth";
-import { sendGiveawayConfirmation, initEmailTransporter } from "./email";
 import express from 'express';
-import multer, { FileFilterCallback } from 'multer';
+import multer from 'multer';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { storage } from './storage.js';
+import passport from 'passport';
+import { setupAuth, hashPassword } from "./auth";
+import { insertProductSchema, insertWishlistSchema, insertRatingSchema, insertGiveawaySchema } from "@shared/schema";
+import { parseProductUrl } from "./product-parser";
+import { sendGiveawayConfirmation, initEmailTransporter } from "./email";
+import openai from "./openai";
+import { ZodError } from 'zod';
+import { isAuthenticated, isAdmin } from './auth.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Configure multer for file uploads
-const storageMulter = multer.diskStorage({
-  destination: function (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) {
-    const uploadDir = path.join(__dirname, '..', 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadDir = path.join(__dirname, '..', 'uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
-    cb(null, uploadDir);
-  },
-  filename: function (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
-  storage: storageMulter,
+  }),
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
-  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -48,32 +45,44 @@ const upload = multer({
   }
 });
 
-function isAdmin(req: Request, res: Response, next: NextFunction) {
-  if (!req.user?.isAdmin) {
-    return res.status(403).json({ error: "Unauthorized" });
+// Authentication middleware
+function isAuthenticated(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
   }
-  next();
+  res.status(401).json({ error: 'Not authenticated' });
 }
 
-function isAuthenticated(req: Request, res: Response, next: NextFunction) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Unauthorized" });
+function isAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (req.isAuthenticated() && req.user && (req.user as any).isAdmin) {
+    return next();
   }
-  next();
+  res.status(403).json({ error: 'Not authorized' });
 }
 
-export async function registerRoutes(app: Express, storage: any): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<void> {
   setupAuth(app);
 
   // Initialize email transporter if environment variables are set
   initEmailTransporter();
 
+  // Ensure storage is initialized
+  if (!storage.isConnected()) {
+    throw new Error('Storage must be initialized before registering routes');
+  }
+
   // Serve uploaded files
   app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
+  // Product routes
   app.get("/api/products", async (_req: Request, res: Response) => {
-    const products = await storage.getProducts();
-    res.json(products);
+    try {
+      const products = await storage.getProducts();
+      res.json(products);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      res.status(500).json({ error: 'Failed to fetch products' });
+    }
   });
 
   app.post("/api/products", isAdmin, async (req: Request, res: Response) => {
@@ -435,32 +444,26 @@ export async function registerRoutes(app: Express, storage: any): Promise<Server
   app.get('/api/status', async (req: Request, res: Response) => {
     try {
       const status = {
-        auth: {
-          status: 'up',
-          message: 'Authentication system is operational'
-        },
-        database: {
-          status: storage.isConnected() ? 'up' : 'down',
-          message: storage.isConnected() ? 'Database is connected' : 'Database connection issues'
-        },
-        session: {
-          status: req.session ? 'up' : 'down',
-          message: req.session ? 'Session management is working' : 'Session issues detected'
-        },
-        email: {
-          status: process.env.EMAIL_HOST ? 'up' : 'down',
-          message: process.env.EMAIL_HOST ? 'Email system configured' : 'Email system not configured'
-        }
+        auth: { status: 'up', message: 'Authentication system is operational' },
+        database: { status: storage.isConnected() ? 'up' : 'down', message: storage.isConnected() ? 'Database is connected' : 'Database connection issues' },
+        session: { status: req.session ? 'up' : 'down', message: req.session ? 'Session management is working' : 'Session issues detected' },
+        email: { status: process.env.EMAIL_HOST ? 'up' : 'down', message: process.env.EMAIL_HOST ? 'Email system configured' : 'Email system not configured' }
       };
       
       res.json(status);
     } catch (error) {
-      res.status(500).json({ error: 'Error checking system status' });
+      console.error('Error checking status:', error);
+      res.status(500).json({ error: 'Failed to check system status' });
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  // Error handling
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    console.error('Error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  });
+
+  return;
 }
 
 function getOpenAI() {

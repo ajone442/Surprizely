@@ -1,93 +1,97 @@
-import express, { Request, Response, NextFunction } from 'express';
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import session from 'express-session';
+import express from 'express';
 import cors from 'cors';
-import { storage } from './storage';
-import { setupAuth } from './auth';
+import session from 'express-session';
+import { setupAuth } from './auth.js';
+import { registerRoutes } from './routes.js';
+import { storage } from './storage.js';
+import { setupVite, serveStatic } from './vite.js';
 
-(async () => {
-  // Initialize storage
-  await storage.init();
+const app = express();
+const port = Number(process.env.PORT) || 10000;
+const isProd = process.env.NODE_ENV === 'production';
 
-  // Initialize express app
-  const app = express();
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
-  app.use(cors({ origin: true, credentials: true }));
+async function startServer() {
+  try {
+    // Initialize storage before setting up routes
+    await storage.init();
+    console.log('Storage initialized successfully');
 
-  // Add session middleware with a proper secret
-  app.use(session({
-    store: storage.sessionStore,
-    secret: process.env.SESSION_SECRET || 'development_secret',
-    resave: false,
-    saveUninitialized: false,
-    proxy: process.env.NODE_ENV === 'production',
-    cookie: { 
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-  }));
+    // Basic middleware
+    app.use(express.json());
+    app.use(cors());
 
-  // Set up authentication
-  setupAuth(app);
-
-  // Request logging middleware
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    const start = Date.now();
-    const path = req.path;
-    let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-    const originalResJson = res.json;
-    res.json = function (bodyJson, ...args) {
-      capturedJsonResponse = bodyJson;
-      return originalResJson.apply(res, [bodyJson, ...args]);
-    };
-
-    res.on("finish", () => {
-      const duration = Date.now() - start;
-      if (path.startsWith("/api")) {
-        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        if (capturedJsonResponse) {
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-        }
-
-        if (logLine.length > 80) {
-          logLine = logLine.slice(0, 79) + "…";
-        }
-
-        log(logLine);
+    // Auth setup (includes session)
+    app.use(session({
+      store: storage.sessionStore,
+      secret: process.env.SESSION_SECRET || 'development_secret',
+      resave: false,
+      saveUninitialized: false,
+      proxy: process.env.NODE_ENV === 'production',
+      cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
       }
+    }));
+    await setupAuth(app);
+
+    if (isProd) {
+      app.use(serveStatic());
+    } else {
+      await setupVite(app);
+    }
+
+    // Request logging middleware
+    app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+      const start = Date.now();
+      const path = req.path;
+      let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+      const originalResJson = res.json;
+      res.json = function (bodyJson, ...args) {
+        capturedJsonResponse = bodyJson;
+        return originalResJson.apply(res, [bodyJson, ...args]);
+      };
+
+      res.on("finish", () => {
+        const duration = Date.now() - start;
+        if (path.startsWith("/api")) {
+          let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+          if (capturedJsonResponse) {
+            logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+          }
+
+          if (logLine.length > 80) {
+            logLine = logLine.slice(0, 79) + "…";
+          }
+
+          console.log(logLine);
+        }
+      });
+
+      next();
     });
 
-    next();
-  });
+    // Register API routes
+    await registerRoutes(app);
 
-  // Set up routes
-  await registerRoutes(app);
+    // Error handling middleware
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      console.error('Error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    });
 
-  // Serve static files in production
-  if (process.env.NODE_ENV === 'production') {
-    app.use('/', serveStatic());
+    // Start listening
+    app.listen(port, '0.0.0.0', () => {
+      if (!process.env.EMAIL_HOST) {
+        console.log('Email configuration missing. Email functionality will be disabled.');
+      }
+      console.log(`Server is running on http://0.0.0.0:${port}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
   }
+}
 
-  // Setup Vite in development
-  if (process.env.NODE_ENV !== 'production') {
-    await setupVite(app);
-  }
-
-  // Error handling middleware
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    console.error(err);
-    res.status(500).json({ error: 'Internal Server Error' });
-    next(err);
-  });
-
-  const PORT = Number(process.env.PORT) || 3000;
-  const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
-
-  app.listen(PORT, HOST, () => {
-    console.log(`Server is running on http://${HOST}:${PORT}`);
-  });
-})().catch(console.error);
+startServer();
