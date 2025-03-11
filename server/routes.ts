@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
@@ -9,18 +9,55 @@ import { parseProductUrl } from "./product-parser";
 import passport from 'passport';
 import { hashPassword } from "./auth";
 import { sendGiveawayConfirmation, initEmailTransporter } from "./email";
+import express from 'express';
+import multer, { FileFilterCallback } from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-function isAdmin(req: Express.Request, res: Express.Response, next: Express.NextFunction) {
+// Configure multer for file uploads
+const storageMulter = multer.diskStorage({
+  destination: function (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) {
+    const uploadDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storageMulter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG and GIF images are allowed.'));
+    }
+  }
+});
+
+function isAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.user?.isAdmin) {
-    return res.status(403).json({ message: "Admin access required" });
+    return res.status(403).json({ error: "Unauthorized" });
   }
   next();
 }
 
-function isAuthenticated(req: Express.Request, res: Express.Response, next: Express.NextFunction) {
+function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Authentication required" });
+    return res.status(401).json({ error: "Unauthorized" });
   }
   next();
 }
@@ -31,12 +68,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize email transporter if environment variables are set
   initEmailTransporter();
 
-  app.get("/api/products", async (_req, res) => {
+  app.get("/api/products", async (_req: Request, res: Response) => {
     const products = await storage.getProducts();
     res.json(products);
   });
 
-  app.post("/api/products", isAdmin, async (req, res) => {
+  app.post("/api/products", isAdmin, async (req: Request, res: Response) => {
     try {
       let productData;
 
@@ -44,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Parse product data from URL
         productData = await parseProductUrl(req.body.productUrl);
         if (!productData) {
-          return res.status(400).json({ message: "Failed to parse product URL" });
+          return res.status(400).json({ error: "Failed to parse product URL" });
         }
       } else {
         // Manual product data entry
@@ -67,7 +104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/products/:id", isAdmin, async (req, res) => {
+  app.patch("/api/products/:id", isAdmin, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const product = insertProductSchema.partial().parse(req.body);
@@ -82,19 +119,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/products/:id", isAdmin, async (req, res) => {
+  app.delete("/api/products/:id", isAdmin, async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     await storage.deleteProduct(id);
     res.sendStatus(204);
   });
 
   // Wishlist routes
-  app.get("/api/wishlist", isAuthenticated, async (req, res) => {
+  app.get("/api/wishlist", isAuthenticated, async (req: Request, res: Response) => {
     const products = await storage.getWishlist(req.user!.id);
     res.json(products);
   });
 
-  app.post("/api/wishlist/:productId", isAuthenticated, async (req, res) => {
+  app.post("/api/wishlist/:productId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const productId = parseInt(req.params.productId);
       const wishlistItem = { userId: req.user!.id, productId };
@@ -105,26 +142,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/wishlist/:productId", isAuthenticated, async (req, res) => {
+  app.delete("/api/wishlist/:productId", isAuthenticated, async (req: Request, res: Response) => {
     const productId = parseInt(req.params.productId);
     await storage.removeFromWishlist(req.user!.id, productId);
     res.sendStatus(204);
   });
 
   // Rating routes
-  app.get("/api/ratings/:productId", async (req, res) => {
+  app.get("/api/ratings/:productId", async (req: Request, res: Response) => {
     const productId = parseInt(req.params.productId);
     const ratings = await storage.getRatings(productId);
     res.json(ratings);
   });
 
-  app.get("/api/ratings/user/:productId", isAuthenticated, async (req, res) => {
+  app.get("/api/ratings/user/:productId", isAuthenticated, async (req: Request, res: Response) => {
     const productId = parseInt(req.params.productId);
     const rating = await storage.getUserRating(req.user!.id, productId);
     res.json(rating || { rating: 0 });
   });
 
-  app.post("/api/ratings/:productId", isAuthenticated, async (req, res) => {
+  app.post("/api/ratings/:productId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const productId = parseInt(req.params.productId);
       const ratingData = insertRatingSchema.parse({
@@ -145,34 +182,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin only rating routes
-  app.put("/api/admin/ratings/:ratingId", isAdmin, async (req, res) => {
+  app.put("/api/admin/ratings/:ratingId", isAdmin, async (req: Request, res: Response) => {
     try {
       const ratingId = parseInt(req.params.ratingId);
       const { rating } = req.body;
 
       if (typeof rating !== 'number' || rating < 1 || rating > 5) {
-        return res.status(400).json({ message: "Rating must be a number between 1 and 5" });
+        return res.status(400).json({ error: "Rating must be a number between 1 and 5" });
       }
 
       const updatedProduct = await storage.updateRating(ratingId, rating);
       res.json(updatedProduct);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ error: error.message });
     }
   });
 
-  app.delete("/api/admin/ratings/:ratingId", isAdmin, async (req, res) => {
+  app.delete("/api/admin/ratings/:ratingId", isAdmin, async (req: Request, res: Response) => {
     try {
       const ratingId = parseInt(req.params.ratingId);
       const updatedProduct = await storage.deleteRating(ratingId);
       res.json(updatedProduct);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ error: error.message });
     }
   });
 
   // Chat endpoint for gift suggestions
-  app.post("/api/chat", async (req, res) => {
+  app.post("/api/chat", async (req: Request, res: Response) => {
     const { message } = req.body;
 
     if (!message) {
@@ -183,8 +220,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If OpenAI API key is not set, return a helpful error
       if (!process.env.OPENAI_API_KEY) {
         return res.status(500).json({
-          message: "AI features are not available",
-          error: "OpenAI API key is not configured. Please set up your API key in Secrets."
+          error: "AI features are not available",
+          message: "OpenAI API key is not configured. Please set up your API key in Secrets."
         });
       }
 
@@ -231,29 +268,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Return a more helpful error message to the client
       return res.status(500).json({ 
-        message: "Failed to get gift suggestions",
-        error: "The AI service is currently unavailable. Please try the quiz again later."
+        error: "Failed to get gift suggestions",
+        message: "The AI service is currently unavailable. Please try the quiz again later."
       });
     }
   });
 
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", (req: Request, res: Response) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
   });
 
   // Account management routes
-  app.post("/api/account/password", isAuthenticated, async (req, res) => {
+  app.post("/api/account/password", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { password } = req.body;
 
       // Validate password requirements
       if (!password || password.length < 7) {
-        return res.status(400).json({ message: "Password must be at least 7 characters" });
+        return res.status(400).json({ error: "Password must be at least 7 characters" });
       }
 
       if (!/[A-Z]/.test(password)) {
-        return res.status(400).json({ message: "Password must contain at least one capital letter" });
+        return res.status(400).json({ error: "Password must contain at least one capital letter" });
       }
 
       const hashedPassword = await hashPassword(password);
@@ -262,12 +299,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(200).json({ message: "Password updated successfully" });
     } catch (error) {
       console.error("Password update error:", error);
-      res.status(500).json({ message: "Failed to update password" });
+      res.status(500).json({ error: "Failed to update password" });
     }
   });
 
   // Giveaway entry endpoint
-  app.post("/api/giveaway", async (req, res) => {
+  app.post("/api/giveaway", async (req: Request, res: Response) => {
     try {
       // Get client IP address for rate limiting
       const ipAddress = req.headers['x-forwarded-for'] || 
@@ -278,7 +315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recentEntries = await storage.checkRecentGiveawayEntriesByIP(String(ipAddress), 60);
       if (recentEntries >= 5) {
         return res.status(429).json({ 
-          message: "Too many entries. Please try again later." 
+          error: "Too many entries. Please try again later." 
         });
       }
 
@@ -324,28 +361,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (error instanceof ZodError) {
         return res.status(400).json({ 
-          message: "Invalid input", 
+          error: "Invalid input", 
           errors: error.errors 
         });
       }
 
       // Handle duplicate entries
       if (error.message && error.message.includes("already entered")) {
-        return res.status(400).json({ message: error.message });
+        return res.status(400).json({ error: error.message });
       }
 
-      res.status(500).json({ message: "Failed to process giveaway entry" });
+      res.status(500).json({ error: "Failed to process giveaway entry" });
+    }
+  });
+
+  // Giveaway entry route with file upload handling
+  app.post('/api/giveaway/enter', upload.single('orderScreenshot'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file || !req.body.email) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      const entry: InsertGiveaway = {
+        email: req.body.email,
+        receiptImage: req.file.filename,
+        status: 'pending',
+        submittedAt: new Date().toISOString()
+      };
+
+      const result = await storage.createGiveawayEntry(entry);
+      res.json({ success: true, entry: result });
+    } catch (error: unknown) {
+      console.error('Error creating giveaway entry:', error);
+      res.status(500).json({ error: 'Failed to create giveaway entry' });
     }
   });
 
   // Admin endpoint to view giveaway entries (protected)
-  app.get("/api/admin/giveaway-entries", isAdmin, async (req, res) => {
+  app.get("/api/admin/giveaway-entries", isAdmin, async (req: Request, res: Response) => {
     try {
       const entries = await storage.getGiveawayEntries();
       res.json(entries);
     } catch (error) {
       console.error("Error fetching giveaway entries:", error);
-      res.status(500).json({ message: "Failed to fetch giveaway entries" });
+      res.status(500).json({ error: "Failed to fetch giveaway entries" });
     }
   });
 
@@ -355,87 +414,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 function getOpenAI() {
   return openai;
-}
-import { Express } from "express";
-import { storage } from "./storage";
-import { z } from "zod";
-import { hashPassword } from "./auth";
-
-export function setupAccountRoutes(app: Express) {
-  // Change email endpoint
-  app.post("/api/account/email", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const schema = z.object({
-      email: z.string().email("Invalid email address"),
-    });
-
-    try {
-      const { email } = schema.parse(req.body);
-
-      // Check if email is already in use
-      const existingUser = await storage.getUserByUsername(email);
-      if (existingUser && existingUser.id !== req.user?.id) {
-        return res.status(400).json({ message: "Email already in use" });
-      }
-
-      // Update user email
-      const updatedUser = await storage.updateUserEmail(req.user?.id, email);
-
-      if (!updatedUser) {
-        return res.status(500).json({ message: "Failed to update email" });
-      }
-
-      return res.status(200).json({ message: "Email updated successfully" });
-    } catch (error) {
-      console.error("Error updating email:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
-      }
-      return res.status(500).json({ message: "An error occurred" });
-    }
-  });
-
-  // Change password endpoint
-  app.post("/api/account/password", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const schema = z.object({
-      currentPassword: z.string(),
-      newPassword: z.string()
-        .min(7, "Password must be at least 7 characters")
-        .regex(/[A-Z]/, "Password must contain at least one capital letter"),
-    });
-
-    try {
-      const { currentPassword, newPassword } = schema.parse(req.body);
-
-      // Verify current password (this would need to be implemented in auth.ts)
-      const passwordValid = await storage.verifyUserPassword(req.user?.id, currentPassword);
-
-      if (!passwordValid) {
-        return res.status(400).json({ message: "Current password is incorrect" });
-      }
-
-      // Hash and update new password
-      const hashedPassword = await hashPassword(newPassword);
-      const updatedUser = await storage.updateUserPassword(req.user?.id, hashedPassword);
-
-      if (!updatedUser) {
-        return res.status(500).json({ message: "Failed to update password" });
-      }
-
-      return res.status(200).json({ message: "Password updated successfully" });
-    } catch (error) {
-      console.error("Error updating password:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
-      }
-      return res.status(500).json({ message: "An error occurred" });
-    }
-  });
 }

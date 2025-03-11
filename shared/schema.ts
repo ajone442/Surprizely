@@ -98,12 +98,13 @@ export const giveawayEntries = pgTable("giveaway_entries", {
   ipAddress: text("ip_address"),
   productLink: text("product_link"),
   emailSent: boolean("email_sent").default(false),
-  orderScreenshot: text("order_screenshot")
+  orderScreenshot: text("order_screenshot"),
+  receiptImage: text("receipt_image"),
 });
 
 export const insertGiveawaySchema = createInsertSchema(giveawayEntries)
   .omit({ id: true, createdAt: true, emailSent: true })
-  .partial({ orderID: true, ipAddress: true, productLink: true, orderScreenshot: true });
+  .partial({ orderID: true, ipAddress: true, productLink: true, orderScreenshot: true, receiptImage: true });
 
 export type InsertGiveaway = z.infer<typeof insertGiveawaySchema>;
 export type GiveawayEntry = typeof giveawayEntries.$inferSelect;
