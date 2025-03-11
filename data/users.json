@@ -1,0 +1,17 @@
+[
+  {
+    "username": "admin",
+    "isAdmin": true,
+    "id": 1
+  },
+  {
+    "username": "admin",
+    "isAdmin": true,
+    "id": 2
+  },
+  {
+    "username": "admin",
+    "isAdmin": true,
+    "id": 3
+  }
+]

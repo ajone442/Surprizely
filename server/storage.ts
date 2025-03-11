@@ -4,6 +4,8 @@ import { EventEmitter } from 'events';
 import { products, users, wishlist, ratings, giveawayEntries, Product, User, InsertProduct, InsertWishlist, InsertRating, Rating, InsertGiveaway, GiveawayEntry } from "@shared/schema";
 import session from "express-session";
 import fs from "fs";
+import { Store } from 'express-session';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,82 +17,96 @@ const USERS_FILE = path.join(DATA_DIR, "users.json");
 const RATINGS_FILE = path.join(DATA_DIR, "ratings.json");
 const WISHLIST_FILE = path.join(DATA_DIR, "wishlist.json");
 const GIVEAWAY_FILE = path.join(DATA_DIR, "giveaway.json");
-const SESSIONS_FILE = path.join(DATA_DIR, "sessions.json");
+const SESSIONS_DIR = path.join(DATA_DIR, "sessions");
 
 // Create data directory if it doesn't exist
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-class FileStore extends EventEmitter implements session.Store {
-  private sessions: { [key: string]: any } = {};
+class FileStore extends Store {
+  private sessions: Map<string, any>;
+  private storageDir: string;
 
-  constructor() {
-    super();
-    this.loadSessions();
+  constructor(options: any = {}) {
+    super(options);
+    this.sessions = new Map();
+    this.storageDir = options.path || SESSIONS_DIR;
+    if (!fs.existsSync(this.storageDir)) {
+      fs.mkdirSync(this.storageDir, { recursive: true });
+    }
   }
 
-  private loadSessions() {
+  get(sid: string, callback: (err: any, session?: any) => void): void {
+    const sessionPath = path.join(this.storageDir, `${sid}.json`);
     try {
-      if (fs.existsSync(SESSIONS_FILE)) {
-        const data = fs.readFileSync(SESSIONS_FILE, 'utf8');
-        this.sessions = JSON.parse(data);
+      if (fs.existsSync(sessionPath)) {
+        const data = fs.readFileSync(sessionPath, 'utf8');
+        callback(null, JSON.parse(data));
+      } else {
+        callback(null);
       }
-    } catch (error) {
-      console.error('Error loading sessions:', error);
-      this.sessions = {};
+    } catch (err) {
+      callback(err);
     }
   }
 
-  private saveSessions() {
+  set(sid: string, session: any, callback?: (err?: any) => void): void {
+    const sessionPath = path.join(this.storageDir, `${sid}.json`);
     try {
-      fs.writeFileSync(SESSIONS_FILE, JSON.stringify(this.sessions, null, 2));
-    } catch (error) {
-      console.error('Error saving sessions:', error);
+      fs.writeFileSync(sessionPath, JSON.stringify(session));
+      callback?.(null);
+    } catch (err) {
+      callback?.(err);
     }
   }
 
-  get = (sid: string, callback: (err: any, session?: any) => void) => {
-    const session = this.sessions[sid];
-    callback(null, session);
-  };
-
-  set = (sid: string, session: any, callback?: (err?: any) => void) => {
-    this.sessions[sid] = session;
-    this.saveSessions();
-    if (callback) callback();
-  };
-
-  destroy = (sid: string, callback?: (err?: any) => void) => {
-    delete this.sessions[sid];
-    this.saveSessions();
-    if (callback) callback();
-  };
-
-  all = (callback: (err: any, obj?: { [sid: string]: any }) => void) => {
-    callback(null, this.sessions);
-  };
-
-  clear = (callback?: (err?: any) => void) => {
-    this.sessions = {};
-    this.saveSessions();
-    if (callback) callback();
-  };
-
-  length = (callback: (err: any, length: number) => void) => {
-    callback(null, Object.keys(this.sessions).length);
-  };
-
-  touch = (sid: string, session: any, callback?: () => void) => {
-    if (this.sessions[sid]) {
-      this.sessions[sid] = session;
-      this.saveSessions();
+  destroy(sid: string, callback?: (err?: any) => void): void {
+    const sessionPath = path.join(this.storageDir, `${sid}.json`);
+    try {
+      if (fs.existsSync(sessionPath)) {
+        fs.unlinkSync(sessionPath);
+      }
+      callback?.(null);
+    } catch (err) {
+      callback?.(err);
     }
-    if (callback) callback();
-  };
+  }
+
+  regenerate(req: any, callback: (err?: any) => void): void {
+    const sid = req.sessionID;
+    this.destroy(sid, (err) => {
+      if (err) {
+        callback(err);
+        return;
+      }
+      req.sessionID = this.generateId();
+      callback();
+    });
+  }
+
+  load(sid: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.get(sid, (err, session) => {
+        if (err) reject(err);
+        else resolve(session);
+      });
+    });
+  }
+
+  createSession(req: any, session: any): any {
+    session.id = req.sessionID;
+    return session;
+  }
+
+  private generateId(): string {
+    return crypto.randomBytes(16).toString('hex');
+  }
 }
 
 interface IStorage {
+  init(): Promise<void>;
+  isConnected(): boolean;
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -114,7 +130,7 @@ interface IStorage {
   createGiveawayEntry(entryData: InsertGiveaway): Promise<GiveawayEntry>;
   updateGiveawayEntryStatus(id: number, status: 'pending' | 'approved' | 'rejected'): Promise<GiveawayEntry | undefined>;
   getGiveawayEntries(): Promise<GiveawayEntry[]>;
-  sessionStore: session.Store;
+  sessionStore: FileStore;
 }
 
 interface Rating {
@@ -155,7 +171,7 @@ export class MemStorage implements IStorage {
   private currentProductId: number;
   private currentRatingId: number;
   private currentGiveawayEntryId: number;
-  sessionStore: session.Store;
+  sessionStore: FileStore;
 
   constructor() {
     this.users = new Map();
@@ -170,15 +186,9 @@ export class MemStorage implements IStorage {
     
     // Use our custom file-based session storage
     this.sessionStore = new FileStore();
-
-    // Load saved data
-    this.loadData();
-    
-    // Create admin user if it doesn't exist
-    this.createAdminUser();
   }
 
-  private loadData() {
+  async init(): Promise<void> {
     try {
       // Load products
       if (fs.existsSync(PRODUCTS_FILE)) {
@@ -236,6 +246,10 @@ export class MemStorage implements IStorage {
     } catch (error) {
       console.error("Error loading data:", error);
     }
+  }
+
+  isConnected(): boolean {
+    return true; // Memory storage is always connected
   }
 
   private saveData() {

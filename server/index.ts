@@ -1,90 +1,93 @@
-import express, { type Request, Response, NextFunction } from "express";
+import express, { Request, Response, NextFunction } from 'express';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import session from 'express-session';
-
-// Other imports...
-
-const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-
-// Add session middleware with a proper secret
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'development_secret',
-  resave: false,
-  saveUninitialized: true,
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-
-// Your other middleware and routes...
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
-});
-
-// Placeholder routes for account management
-app.put('/api/account/email', (req, res) => {
-  // Implement email update logic here
-  res.status(200).json({ message: 'Email updated successfully' });
-});
-
-app.put('/api/account/password', (req, res) => {
-  // Implement password update logic here
-  res.status(200).json({ message: 'Password updated successfully' });
-});
-
+import cors from 'cors';
+import { storage } from './storage';
+import { setupAuth } from './auth';
 
 (async () => {
-  const server = await registerRoutes(app);
+  // Initialize storage
+  await storage.init();
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+  // Initialize express app
+  const app = express();
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
+  app.use(cors({ origin: true, credentials: true }));
 
-    res.status(status).json({ message });
-    throw err;
+  // Add session middleware with a proper secret
+  app.use(session({
+    store: storage.sessionStore,
+    secret: process.env.SESSION_SECRET || 'development_secret',
+    resave: false,
+    saveUninitialized: false,
+    proxy: process.env.NODE_ENV === 'production',
+    cookie: { 
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
+
+  // Set up authentication
+  setupAuth(app);
+
+  // Request logging middleware
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const start = Date.now();
+    const path = req.path;
+    let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+    const originalResJson = res.json;
+    res.json = function (bodyJson, ...args) {
+      capturedJsonResponse = bodyJson;
+      return originalResJson.apply(res, [bodyJson, ...args]);
+    };
+
+    res.on("finish", () => {
+      const duration = Date.now() - start;
+      if (path.startsWith("/api")) {
+        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+        if (capturedJsonResponse) {
+          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        }
+
+        if (logLine.length > 80) {
+          logLine = logLine.slice(0, 79) + "…";
+        }
+
+        log(logLine);
+      }
+    });
+
+    next();
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+  // Set up routes
+  await registerRoutes(app);
+
+  // Serve static files in production
+  if (process.env.NODE_ENV === 'production') {
+    app.use('/', serveStatic());
   }
 
-  const PORT = Number(process.env.PORT) || 3000;
-  app.listen(PORT, 'localhost', () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+  // Setup Vite in development
+  if (process.env.NODE_ENV !== 'production') {
+    await setupVite(app);
+  }
+
+  // Error handling middleware
+  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    console.error(err);
+    res.status(500).json({ error: 'Internal Server Error' });
+    next(err);
   });
-})();
+
+  const PORT = Number(process.env.PORT) || 3000;
+  const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+
+  app.listen(PORT, HOST, () => {
+    console.log(`Server is running on http://${HOST}:${PORT}`);
+  });
+})().catch(console.error);
