@@ -1,8 +1,88 @@
 import { products, users, wishlist, ratings, giveawayEntries, Product, User, InsertProduct, InsertWishlist, InsertRating, Rating, InsertGiveaway, GiveawayEntry } from "@shared/schema";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import fs from "fs";
+import path from "path";
 
-const MemoryStore = createMemoryStore(session);
+const DATA_DIR = path.join(__dirname, "../data");
+const PRODUCTS_FILE = path.join(DATA_DIR, "products.json");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
+const RATINGS_FILE = path.join(DATA_DIR, "ratings.json");
+const WISHLIST_FILE = path.join(DATA_DIR, "wishlist.json");
+const SESSIONS_FILE = path.join(DATA_DIR, "sessions.json");
+const GIVEAWAY_ENTRIES_FILE = path.join(DATA_DIR, "giveawayEntries.json");
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Simple file-based session store
+class FileSessionStore implements session.Store {
+  private sessions: Map<string, any>;
+  private saveInterval: ReturnType<typeof setInterval>;
+
+  constructor() {
+    this.sessions = new Map();
+    this.loadSessions();
+    
+    // Save sessions periodically
+    this.saveInterval = setInterval(() => this.saveSessions(), 5000);
+  }
+
+  private loadSessions() {
+    try {
+      if (fs.existsSync(SESSIONS_FILE)) {
+        const data = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
+        this.sessions = new Map(Object.entries(data));
+      }
+    } catch (error) {
+      console.error('Error loading sessions:', error);
+    }
+  }
+
+  private saveSessions() {
+    try {
+      const data = Object.fromEntries(this.sessions);
+      fs.writeFileSync(SESSIONS_FILE, JSON.stringify(data));
+    } catch (error) {
+      console.error('Error saving sessions:', error);
+    }
+  }
+
+  get(sid: string, callback: (err: any, session?: any) => void): void {
+    const session = this.sessions.get(sid);
+    callback(null, session);
+  }
+
+  set(sid: string, session: any, callback?: (err?: any) => void): void {
+    this.sessions.set(sid, session);
+    if (callback) callback();
+  }
+
+  destroy(sid: string, callback?: (err?: any) => void): void {
+    this.sessions.delete(sid);
+    if (callback) callback();
+  }
+
+  touch(sid: string, session: any, callback?: () => void): void {
+    this.sessions.set(sid, session);
+    if (callback) callback();
+  }
+
+  all(callback: (err: any, obj?: { [sid: string]: any; } | null) => void): void {
+    const obj = Object.fromEntries(this.sessions);
+    callback(null, obj);
+  }
+
+  length(callback: (err: any, length?: number) => void): void {
+    callback(null, this.sessions.size);
+  }
+
+  clear(callback?: (err?: any) => void): void {
+    this.sessions.clear();
+    if (callback) callback();
+  }
+}
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -46,7 +126,6 @@ interface InsertRating {
   rating: number;
 }
 
-
 interface InsertGiveaway {
   email: string;
   orderID: string;
@@ -88,12 +167,107 @@ export class MemStorage implements IStorage {
     this.currentProductId = 1;
     this.currentRatingId = 1;
     this.currentGiveawayEntryId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
-    });
+    
+    // Use our custom file-based session storage
+    this.sessionStore = new FileSessionStore();
 
-    // Create admin user with a hashed password
+    // Load saved data
+    this.loadData();
+    
+    // Create admin user if it doesn't exist
     this.createAdminUser();
+  }
+
+  private loadData() {
+    try {
+      // Load products
+      if (fs.existsSync(PRODUCTS_FILE)) {
+        const productsData = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf-8'));
+        productsData.forEach((product: Product) => {
+          this.products.set(product.id, product);
+          if (product.id >= this.currentProductId) {
+            this.currentProductId = product.id + 1;
+          }
+        });
+      }
+      
+      // Load users
+      if (fs.existsSync(USERS_FILE)) {
+        const usersData = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+        usersData.forEach((user: User) => {
+          this.users.set(user.id, user);
+          if (user.id >= this.currentUserId) {
+            this.currentUserId = user.id + 1;
+          }
+        });
+      }
+
+      // Load ratings
+      if (fs.existsSync(RATINGS_FILE)) {
+        const ratingsData = JSON.parse(fs.readFileSync(RATINGS_FILE, 'utf-8')) as Record<string, Rating[]>;
+        Object.entries(ratingsData).forEach(([productId, productRatings]) => {
+          this.ratings.set(Number(productId), productRatings);
+          productRatings.forEach((rating: Rating) => {
+            if (rating.id >= this.currentRatingId) {
+              this.currentRatingId = rating.id + 1;
+            }
+          });
+        });
+      }
+
+      // Load wishlist
+      if (fs.existsSync(WISHLIST_FILE)) {
+        const wishlistData = JSON.parse(fs.readFileSync(WISHLIST_FILE, 'utf-8'));
+        Object.entries(wishlistData).forEach(([userId, productIds]) => {
+          this.wishlist.set(Number(userId), new Set(productIds as number[]));
+        });
+      }
+
+      // Load giveaway entries
+      if (fs.existsSync(GIVEAWAY_ENTRIES_FILE)) {
+        const giveawayEntriesData = JSON.parse(fs.readFileSync(GIVEAWAY_ENTRIES_FILE, 'utf-8'));
+        giveawayEntriesData.forEach((entry: GiveawayEntry) => {
+          this.giveawayEntries.set(entry.id, entry);
+          if (entry.id >= this.currentGiveawayEntryId) {
+            this.currentGiveawayEntryId = entry.id + 1;
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+    }
+  }
+
+  private saveData() {
+    try {
+      // Save products
+      fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(Array.from(this.products.values()), null, 2));
+      
+      // Save users (excluding passwords for security)
+      const usersToSave = Array.from(this.users.values()).map(user => ({
+        ...user,
+        password: undefined
+      }));
+      fs.writeFileSync(USERS_FILE, JSON.stringify(usersToSave, null, 2));
+
+      // Save ratings
+      const ratingsObj = Object.fromEntries(this.ratings.entries());
+      fs.writeFileSync(RATINGS_FILE, JSON.stringify(ratingsObj, null, 2));
+
+      // Save wishlist
+      const wishlistObj = Object.fromEntries(
+        Array.from(this.wishlist.entries()).map(([userId, productIds]) => [
+          userId,
+          Array.from(productIds)
+        ])
+      );
+      fs.writeFileSync(WISHLIST_FILE, JSON.stringify(wishlistObj, null, 2));
+
+      // Save giveaway entries
+      fs.writeFileSync(GIVEAWAY_ENTRIES_FILE, JSON.stringify(Array.from(this.giveawayEntries.values()), null, 2));
+    } catch (error) {
+      console.error("Error saving data:", error);
+    }
   }
 
   private async createAdminUser() {
@@ -133,6 +307,7 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id, isAdmin: insertUser.isAdmin || false };
     this.users.set(id, user);
     this.wishlist.set(id, new Set());
+    this.saveData();
     return user;
   }
 
@@ -141,6 +316,7 @@ export class MemStorage implements IStorage {
     if (!user) return undefined;
     const updatedUser = { ...user, ...data };
     this.users.set(userId, updatedUser);
+    this.saveData();
     return updatedUser;
   }
 
@@ -149,6 +325,7 @@ export class MemStorage implements IStorage {
     if (!user) return undefined;
     const updatedUser = { ...user, username: email };
     this.users.set(userId, updatedUser);
+    this.saveData();
     return updatedUser;
   }
 
@@ -157,6 +334,7 @@ export class MemStorage implements IStorage {
     if (!user) return undefined;
     const updatedUser = { ...user, password };
     this.users.set(userId, updatedUser);
+    this.saveData();
     return updatedUser;
   }
 
@@ -199,7 +377,7 @@ export class MemStorage implements IStorage {
       ratingCount: 0,
     };
     this.products.set(id, newProduct);
-    console.log("Created product in storage:", newProduct);
+    this.saveData();
     return newProduct;
   }
 
@@ -212,11 +390,13 @@ export class MemStorage implements IStorage {
 
     const updated: Product = { ...existing, ...updateProduct };
     this.products.set(id, updated);
+    this.saveData();
     return updated;
   }
 
   async deleteProduct(id: number): Promise<void> {
     this.products.delete(id);
+    this.saveData();
     for (const userWishlist of this.wishlist.values()) {
       userWishlist.delete(id);
     }
@@ -274,9 +454,9 @@ export class MemStorage implements IStorage {
     const updatedProduct = {...this.products.get(productId)!, averageRating: Math.round(averageRating * 10) / 10, ratingCount: productRatings.length};
     this.products.set(productId, updatedProduct);
 
+    this.saveData();
     return updatedProduct;
   }
-
 
   async updateRating(ratingId: number, newRating: number): Promise<Product | undefined> {
     const ratingToUpdate = Array.from(this.ratings.values()).flat().find(r => r.id === ratingId);
@@ -291,8 +471,9 @@ export class MemStorage implements IStorage {
     const averageRating = productRatings.reduce((sum, r) => sum + r.rating, 0) / productRatings.length || 0;
     const updatedProduct = {...this.products.get(ratingToUpdate.productId)!, averageRating: Math.round(averageRating * 10) / 10, ratingCount: productRatings.length};
     this.products.set(ratingToUpdate.productId, updatedProduct);
-    return updatedProduct;
 
+    this.saveData();
+    return updatedProduct;
   }
 
   async deleteRating(ratingId: number): Promise<Product | undefined> {
@@ -307,6 +488,8 @@ export class MemStorage implements IStorage {
     const averageRating = updatedRatings.length > 0 ? updatedRatings.reduce((sum, r) => sum + r.rating, 0) / updatedRatings.length : 0;
     const updatedProduct = {...this.products.get(productId)!, averageRating: Math.round(averageRating * 10) / 10, ratingCount: updatedRatings.length};
     this.products.set(productId, updatedProduct);
+
+    this.saveData();
     return updatedProduct;
   }
 
@@ -323,6 +506,7 @@ export class MemStorage implements IStorage {
     this.giveawayEntries.set(id, newEntry);
     // Placeholder for sending email - replace with actual email sending logic
     await this.sendEmail(newEntry.email, newEntry.orderID || "Screenshot provided", newEntry.productLink);
+    this.saveData();
     return newEntry;
   }
 
@@ -331,6 +515,7 @@ export class MemStorage implements IStorage {
     if (!entry) throw new Error("Giveaway entry not found");
     const updatedEntry = { ...entry, emailSent };
     this.giveawayEntries.set(id, updatedEntry);
+    this.saveData();
     return updatedEntry;
   }
 
