@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Gift, Heart, LogIn, LogOut, User } from "lucide-react";
+import { Activity, Gift, Heart, LogIn, LogOut, User } from "lucide-react";
 
 export default function Navigation() {
   const { user, logoutMutation } = useAuth();
@@ -49,6 +49,12 @@ export default function Navigation() {
                     <Link href="/account">
                       <User className="mr-2 h-4 w-4" />
                       Manage Account
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/status">
+                      <Activity className="mr-2 h-4 w-4" />
+                      System Status
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => logoutMutation.mutate()}>

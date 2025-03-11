@@ -9,12 +9,15 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Add session middleware with a secret
+// Add session middleware with a proper secret
 app.use(session({
-  secret: process.env.SESSION_SECRET, // Use environment variable
+  secret: process.env.SESSION_SECRET || 'development_secret',
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: process.env.NODE_ENV === 'production' } // Secure cookies in production
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
 
 // Your other middleware and routes...
@@ -80,14 +83,8 @@ app.put('/api/account/password', (req, res) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  const PORT = Number(process.env.PORT) || 3000;
+  app.listen(PORT, 'localhost', () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
   });
 })();

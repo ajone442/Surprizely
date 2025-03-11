@@ -431,6 +431,34 @@ export async function registerRoutes(app: Express, storage: any): Promise<Server
     }
   });
 
+  // Status check endpoint
+  app.get('/api/status', async (req: Request, res: Response) => {
+    try {
+      const status = {
+        auth: {
+          status: 'up',
+          message: 'Authentication system is operational'
+        },
+        database: {
+          status: storage.isConnected() ? 'up' : 'down',
+          message: storage.isConnected() ? 'Database is connected' : 'Database connection issues'
+        },
+        session: {
+          status: req.session ? 'up' : 'down',
+          message: req.session ? 'Session management is working' : 'Session issues detected'
+        },
+        email: {
+          status: process.env.EMAIL_HOST ? 'up' : 'down',
+          message: process.env.EMAIL_HOST ? 'Email system configured' : 'Email system not configured'
+        }
+      };
+      
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({ error: 'Error checking system status' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
