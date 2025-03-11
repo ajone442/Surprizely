@@ -1,11 +1,9 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { EventEmitter } from 'events';
-import { products, users, wishlist, ratings, giveawayEntries, Product, User, InsertProduct, InsertWishlist, InsertRating, Rating, InsertGiveaway, GiveawayEntry } from "@shared/schema";
-import session from "express-session";
 import fs from "fs";
 import { Store } from 'express-session';
 import crypto from 'crypto';
+import { z } from 'zod';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +20,79 @@ const SESSIONS_DIR = path.join(DATA_DIR, "sessions");
 // Create data directory if it doesn't exist
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Define schemas
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  password: string;
+  name?: string;
+  isAdmin: boolean;
+  createdAt: string;
+}
+
+export interface InsertUser {
+  username: string;
+  email: string;
+  password: string;
+  name?: string;
+  isAdmin?: boolean;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  imageUrl?: string;
+  category: string;
+  createdAt: string;
+  averageRating?: number;
+  affiliateLink?: string;
+}
+
+export interface InsertProduct {
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  imageUrl?: string;
+  category: string;
+  affiliateLink?: string;
+}
+
+export interface Rating {
+  id: number;
+  userId: number;
+  productId: number;
+  rating: number;
+  createdAt: string;
+}
+
+export interface InsertRating {
+  userId: number;
+  productId: number;
+  rating: number;
+}
+
+export interface GiveawayEntry {
+  id: number;
+  email: string;
+  receiptImage: string;
+  ipAddress: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+}
+
+export interface InsertGiveaway {
+  email: string;
+  receiptImage: string;
+  ipAddress: string;
+  status?: 'pending' | 'approved' | 'rejected';
+  createdAt?: Date;
 }
 
 class FileStore extends Store {
@@ -104,81 +175,18 @@ class FileStore extends Store {
   }
 }
 
-interface IStorage {
-  init(): Promise<void>;
-  isConnected(): boolean;
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined>;
-  updateUserEmail(userId: number, email: string): Promise<User | undefined>;
-  updateUserPassword(userId: number, password: string): Promise<User | undefined>;
-  verifyUserPassword(userId: number, password: string): Promise<boolean>;
-  getProducts(): Promise<Product[]>;
-  getProduct(id: number): Promise<Product | undefined>;
-  createProduct(product: InsertProduct): Promise<Product>;
-  updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product>;
-  deleteProduct(id: number): Promise<void>;
-  getWishlist(userId: number): Promise<Product[]>;
-  addToWishlist(wishlist: InsertWishlist): Promise<void>;
-  removeFromWishlist(userId: number, productId: number): Promise<void>;
-  getRatings(productId: number): Promise<Rating[]>;
-  getUserRating(userId: number, productId: number): Promise<Rating | null>;
-  rateProduct(ratingData: InsertRating): Promise<Product | undefined>;
-  updateRating(ratingId: number, newRating: number): Promise<Product | undefined>;
-  deleteRating(ratingId: number): Promise<Product | undefined>;
-  createGiveawayEntry(entryData: InsertGiveaway): Promise<GiveawayEntry>;
-  updateGiveawayEntryStatus(id: number, status: 'pending' | 'approved' | 'rejected'): Promise<GiveawayEntry | undefined>;
-  getGiveawayEntries(): Promise<GiveawayEntry[]>;
-  sessionStore: FileStore;
-}
-
-interface Rating {
-  id: number;
-  userId: number;
-  productId: number;
-  rating: number;
-  createdAt: string;
-}
-
-interface InsertRating {
-  userId: number;
-  productId: number;
-  rating: number;
-}
-
-interface InsertGiveaway {
-  email: string;
-  receiptImage: string;
-  status?: 'pending' | 'approved' | 'rejected';
-}
-
-interface GiveawayEntry {
-  id: number;
-  email: string;
-  receiptImage: string;
-  status: 'pending' | 'approved' | 'rejected';
-  submittedAt: string;
-}
-
-class MemStorage implements IStorage {
+class MemStorage {
   private static instance: MemStorage;
   private users: Map<number, User>;
   private products: Map<number, Product>;
   private wishlist: Map<number, Set<number>>;
-  private ratings: Map<number, Rating[]>;
+  private ratings: Map<number, Map<number, Rating>>;
   private giveawayEntries: Map<number, GiveawayEntry>;
   private currentUserId: number;
   private currentProductId: number;
   private currentRatingId: number;
   private currentGiveawayEntryId: number;
   private connected: boolean = false;
-  private dataDir: string;
-  private productsFile: string;
-  private usersFile: string;
-  private wishlistFile: string;
-  private giveawayFile: string;
-  private ratingsFile: string;
   sessionStore: FileStore;
 
   private constructor() {
@@ -191,19 +199,6 @@ class MemStorage implements IStorage {
     this.currentProductId = 1;
     this.currentRatingId = 1;
     this.currentGiveawayEntryId = 1;
-    
-    // In production, use absolute paths from the app root
-    const isProd = process.env.NODE_ENV === 'production';
-    const baseDir = isProd ? '/app/data' : path.join(__dirname, '..', 'data');
-    
-    this.dataDir = baseDir;
-    this.productsFile = path.join(this.dataDir, 'products.json');
-    this.usersFile = path.join(this.dataDir, 'users.json');
-    this.wishlistFile = path.join(this.dataDir, 'wishlist.json');
-    this.giveawayFile = path.join(this.dataDir, 'giveaway.json');
-    this.ratingsFile = path.join(this.dataDir, 'ratings.json');
-    
-    // Use our custom file-based session storage
     this.sessionStore = new FileStore();
   }
 
@@ -216,132 +211,10 @@ class MemStorage implements IStorage {
 
   async init(): Promise<void> {
     try {
-      // Ensure data directory exists
-      if (!fs.existsSync(this.dataDir)) {
-        fs.mkdirSync(this.dataDir, { recursive: true });
-      }
-
-      // Initialize files if they don't exist
-      const files = [
-        this.productsFile,
-        this.usersFile,
-        this.wishlistFile,
-        this.giveawayFile,
-        this.ratingsFile
-      ];
-
-      for (const file of files) {
-        if (!fs.existsSync(file)) {
-          fs.writeFileSync(file, '[]');
-        }
-      }
-
-      // Load initial data
       await this.loadData();
       this.connected = true;
-      console.log('Storage initialized successfully at:', this.dataDir);
     } catch (error) {
       console.error('Failed to initialize storage:', error);
-      this.connected = false;
-      throw error;
-    }
-  }
-
-  private async loadData(): Promise<void> {
-    try {
-      // Load products
-      if (fs.existsSync(this.productsFile)) {
-        const productsData = await fs.promises.readFile(this.productsFile, 'utf-8');
-        const products = JSON.parse(productsData);
-        products.forEach((product: Product) => {
-          this.products.set(product.id, product);
-          if (product.id >= this.currentProductId) {
-            this.currentProductId = product.id + 1;
-          }
-        });
-      }
-      
-      // Load users
-      if (fs.existsSync(this.usersFile)) {
-        const usersData = await fs.promises.readFile(this.usersFile, 'utf-8');
-        const users = JSON.parse(usersData);
-        users.forEach((user: User) => {
-          this.users.set(user.id, user);
-          if (user.id >= this.currentUserId) {
-            this.currentUserId = user.id + 1;
-          }
-        });
-      }
-
-      // Load ratings
-      if (fs.existsSync(this.ratingsFile)) {
-        const ratingsData = await fs.promises.readFile(this.ratingsFile, 'utf-8');
-        const ratings = JSON.parse(ratingsData) as Record<string, Rating[]>;
-        Object.entries(ratings).forEach(([productId, productRatings]) => {
-          this.ratings.set(Number(productId), productRatings);
-          productRatings.forEach((rating: Rating) => {
-            if (rating.id >= this.currentRatingId) {
-              this.currentRatingId = rating.id + 1;
-            }
-          });
-        });
-      }
-
-      // Load wishlist
-      if (fs.existsSync(this.wishlistFile)) {
-        const wishlistData = await fs.promises.readFile(this.wishlistFile, 'utf-8');
-        const wishlist = JSON.parse(wishlistData);
-        Object.entries(wishlist).forEach(([userId, productIds]) => {
-          this.wishlist.set(Number(userId), new Set(productIds as number[]));
-        });
-      }
-
-      // Load giveaway entries
-      if (fs.existsSync(this.giveawayFile)) {
-        const giveawayEntriesData = await fs.promises.readFile(this.giveawayFile, 'utf-8');
-        const giveawayEntries = JSON.parse(giveawayEntriesData);
-        giveawayEntries.forEach((entry: GiveawayEntry) => {
-          this.giveawayEntries.set(entry.id, entry);
-          if (entry.id >= this.currentGiveawayEntryId) {
-            this.currentGiveawayEntryId = entry.id + 1;
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error loading data:', error);
-      throw error;
-    }
-  }
-
-  private async saveData(): Promise<void> {
-    try {
-      // Save products
-      await fs.promises.writeFile(this.productsFile, JSON.stringify(Array.from(this.products.values()), null, 2));
-      
-      // Save users (excluding passwords for security)
-      const usersToSave = Array.from(this.users.values()).map(user => ({
-        ...user,
-        password: undefined
-      }));
-      await fs.promises.writeFile(this.usersFile, JSON.stringify(usersToSave, null, 2));
-
-      // Save ratings
-      const ratingsObj = Object.fromEntries(this.ratings.entries());
-      await fs.promises.writeFile(this.ratingsFile, JSON.stringify(ratingsObj, null, 2));
-
-      // Save wishlist
-      const wishlistObj = Object.fromEntries(
-        Array.from(this.wishlist.entries()).map(([userId, productIds]) => [
-          userId,
-          Array.from(productIds)
-        ])
-      );
-      await fs.promises.writeFile(this.wishlistFile, JSON.stringify(wishlistObj, null, 2));
-
-      // Save giveaway entries
-      await fs.promises.writeFile(this.giveawayFile, JSON.stringify(Array.from(this.giveawayEntries.values()), null, 2));
-    } catch (error) {
-      console.error('Error saving data:', error);
       throw error;
     }
   }
@@ -350,288 +223,170 @@ class MemStorage implements IStorage {
     return this.connected;
   }
 
-  async getUser(id: number): Promise<User | undefined> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
+  private async loadData(): Promise<void> {
+    try {
+      // Load users
+      if (fs.existsSync(USERS_FILE)) {
+        const usersData = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+        usersData.forEach((user: User) => this.users.set(user.id, user));
+        this.currentUserId = Math.max(...Array.from(this.users.keys())) + 1;
+      }
+
+      // Load products
+      if (fs.existsSync(PRODUCTS_FILE)) {
+        const productsData = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf-8'));
+        productsData.forEach((product: Product) => this.products.set(product.id, product));
+        this.currentProductId = Math.max(...Array.from(this.products.keys())) + 1;
+      }
+
+      // Load ratings
+      if (fs.existsSync(RATINGS_FILE)) {
+        const ratingsData = JSON.parse(fs.readFileSync(RATINGS_FILE, 'utf-8'));
+        if (Array.isArray(ratingsData)) {
+          ratingsData.forEach((rating: Rating) => {
+            const productRatings = this.ratings.get(rating.productId) || new Map();
+            productRatings.set(rating.userId, rating);
+            this.ratings.set(rating.productId, productRatings);
+          });
+        }
+      }
+
+      // Load giveaway entries
+      if (fs.existsSync(GIVEAWAY_FILE)) {
+        const entriesData = JSON.parse(fs.readFileSync(GIVEAWAY_FILE, 'utf-8'));
+        entriesData.forEach((entry: GiveawayEntry) => this.giveawayEntries.set(entry.id, entry));
+        this.currentGiveawayEntryId = Math.max(...Array.from(this.giveawayEntries.keys())) + 1;
+      }
+
+      // Calculate average ratings for products
+      this.products.forEach(product => {
+        const productRatings = this.ratings.get(product.id);
+        if (productRatings && productRatings.size > 0) {
+          const sum = Array.from(productRatings.values()).reduce((acc, rating) => acc + rating.rating, 0);
+          product.averageRating = sum / productRatings.size;
+        } else {
+          product.averageRating = 0;
+        }
+      });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        // File doesn't exist, initialize with empty data
+        await this.saveData();
+      } else {
+        throw error;
+      }
     }
+  }
+
+  private async saveData(): Promise<void> {
+    // Save users
+    fs.writeFileSync(USERS_FILE, JSON.stringify(Array.from(this.users.values()), null, 2));
+
+    // Save products
+    fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(Array.from(this.products.values()), null, 2));
+
+    // Save ratings
+    const allRatings = Array.from(this.ratings.values()).flatMap(ratings => Array.from(ratings.values()));
+    fs.writeFileSync(RATINGS_FILE, JSON.stringify(allRatings, null, 2));
+
+    // Save giveaway entries
+    fs.writeFileSync(GIVEAWAY_FILE, JSON.stringify(Array.from(this.giveawayEntries.values()), null, 2));
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    return Array.from(this.users.values()).find(user => user.username === username);
   }
 
-  async createUser(insertUser: InsertUser & { isAdmin?: boolean }): Promise<User> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id, isAdmin: insertUser.isAdmin || false };
-    this.users.set(id, user);
-    this.wishlist.set(id, new Set());
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.email === email);
+  }
+
+  async createUser(userData: InsertUser): Promise<User> {
+    const user: User = {
+      id: this.currentUserId++,
+      ...userData,
+      isAdmin: userData.isAdmin || false,
+      createdAt: new Date().toISOString()
+    };
+    this.users.set(user.id, user);
     await this.saveData();
     return user;
   }
 
   async updateUser(userId: number, data: Partial<InsertUser>): Promise<User | undefined> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
     const user = this.users.get(userId);
     if (!user) return undefined;
-    const updatedUser = { ...user, ...data };
-    this.users.set(userId, updatedUser);
-    await this.saveData();
-    return updatedUser;
-  }
 
-  async updateUserEmail(userId: number, email: string): Promise<User | undefined> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const user = this.users.get(userId);
-    if (!user) return undefined;
-    const updatedUser = { ...user, username: email };
-    this.users.set(userId, updatedUser);
+    Object.assign(user, data);
     await this.saveData();
-    return updatedUser;
+    return user;
   }
 
   async updateUserPassword(userId: number, password: string): Promise<User | undefined> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
     const user = this.users.get(userId);
     if (!user) return undefined;
-    const updatedUser = { ...user, password };
-    this.users.set(userId, updatedUser);
+
+    user.password = password;
     await this.saveData();
-    return updatedUser;
+    return user;
   }
 
   async verifyUserPassword(userId: number, password: string): Promise<boolean> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const user = this.users.get(userId);
+    const user = await this.getUser(userId);
     if (!user) return false;
-
-    // Check if password is already hashed
-    if (user.password.includes('.')) {
-      // Password is hashed, use secure comparison
-      try {
-        // Import comparePasswords function from auth.ts
-        const { comparePasswords } = await import('./auth');
-        return await comparePasswords(password, user.password);
-      } catch (error) {
-        console.error("Error comparing passwords:", error);
-        return false;
-      }
-    } else {
-      // Legacy password comparison (plain text)
-      return user.password === password;
-    }
+    return user.password === password; // In production, use proper password hashing
   }
 
+  // Product methods
   async getProducts(): Promise<Product[]> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
     return Array.from(this.products.values());
   }
 
   async getProduct(id: number): Promise<Product | undefined> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
     return this.products.get(id);
   }
 
-  async createProduct(product: InsertProduct): Promise<Product> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const id = this.currentProductId++;
-    const newProduct = {
-      id,
-      ...product,
-      price: product.price,
-      averageRating: 0,
-      ratingCount: 0,
+  async createProduct(productData: InsertProduct): Promise<Product> {
+    const product: Product = {
+      id: this.currentProductId++,
+      ...productData,
+      imageUrl: productData.imageUrl || `/uploads/${productData.image}`,
+      createdAt: new Date().toISOString(),
+      averageRating: 0
     };
-    this.products.set(id, newProduct);
+    this.products.set(product.id, product);
     await this.saveData();
-    return newProduct;
+    return product;
   }
 
-  async updateProduct(
-    id: number,
-    updateProduct: Partial<InsertProduct>,
-  ): Promise<Product> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const existing = await this.getProduct(id);
-    if (!existing) throw new Error("Product not found");
-
-    const updated: Product = { ...existing, ...updateProduct };
-    this.products.set(id, updated);
-    await this.saveData();
-    return updated;
-  }
-
-  async deleteProduct(id: number): Promise<void> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    this.products.delete(id);
-    await this.saveData();
-    for (const userWishlist of this.wishlist.values()) {
-      userWishlist.delete(id);
-    }
-    this.ratings.delete(id);
-  }
-
-  async getWishlist(userId: number): Promise<Product[]> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const userWishlist = this.wishlist.get(userId);
-    if (!userWishlist) return [];
-
-    return Array.from(userWishlist)
-      .map(productId => this.products.get(productId))
-      .filter((product): product is Product => !!product);
-  }
-
-  async addToWishlist(wishlistItem: InsertWishlist): Promise<void> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const userWishlist = this.wishlist.get(wishlistItem.userId);
-    if (!userWishlist) return;
-    userWishlist.add(wishlistItem.productId);
-  }
-
-  async removeFromWishlist(userId: number, productId: number): Promise<void> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const userWishlist = this.wishlist.get(userId);
-    if (!userWishlist) return;
-    userWishlist.delete(productId);
-  }
-
-  async getRatings(productId: number): Promise<Rating[]> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    return this.ratings.get(productId) || [];
-  }
-
-  async getUserRating(userId: number, productId: number): Promise<Rating | null> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const ratingsForProduct = this.ratings.get(productId);
-    if (!ratingsForProduct) return null;
-    return ratingsForProduct.find(r => r.userId === userId) || null;
-  }
-
-  async rateProduct(ratingData: InsertRating): Promise<Product | undefined> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const productId = ratingData.productId;
-    const existingRating = await this.getUserRating(ratingData.userId, productId);
-
-    if (existingRating) {
-      //Update existing rating
-      const updatedRating: Rating = { ...existingRating, rating: ratingData.rating, createdAt: new Date().toISOString()};
-      const updatedRatings = [...this.ratings.get(productId)!.filter(r => r.id !== existingRating.id), updatedRating];
-      this.ratings.set(productId, updatedRatings);
-    } else {
-      const newRating: Rating = { id: this.currentRatingId++, ...ratingData, createdAt: new Date().toISOString()};
-      const productRatings = this.ratings.get(productId) || [];
-      this.ratings.set(productId, [...productRatings, newRating]);
-    }
-
-    const productRatings = this.ratings.get(productId) || [];
-    const averageRating = productRatings.reduce((sum, r) => sum + r.rating, 0) / productRatings.length || 0;
-    const updatedProduct = {...this.products.get(productId)!, averageRating: Math.round(averageRating * 10) / 10, ratingCount: productRatings.length};
-    this.products.set(productId, updatedProduct);
-
-    await this.saveData();
-    return updatedProduct;
-  }
-
-  async updateRating(ratingId: number, newRating: number): Promise<Product | undefined> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const ratingToUpdate = Array.from(this.ratings.values()).flat().find(r => r.id === ratingId);
-
-    if(!ratingToUpdate) {
-      throw new Error("Rating not found");
-    }
-
-    const updatedRating:Rating = {...ratingToUpdate, rating: newRating, createdAt: new Date().toISOString()};
-    const productRatings = this.ratings.get(ratingToUpdate.productId)!.map(r => r.id === ratingId ? updatedRating : r);
-    this.ratings.set(ratingToUpdate.productId, productRatings);
-    const averageRating = productRatings.reduce((sum, r) => sum + r.rating, 0) / productRatings.length || 0;
-    const updatedProduct = {...this.products.get(ratingToUpdate.productId)!, averageRating: Math.round(averageRating * 10) / 10, ratingCount: productRatings.length};
-    this.products.set(ratingToUpdate.productId, updatedProduct);
-
-    await this.saveData();
-    return updatedProduct;
-  }
-
-  async deleteRating(ratingId: number): Promise<Product | undefined> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
-    const ratingToDelete = Array.from(this.ratings.values()).flat().find(r => r.id === ratingId);
-    if (!ratingToDelete) {
-      throw new Error("Rating not found");
-    }
-    const productId = ratingToDelete.productId;
-    const updatedRatings = this.ratings.get(productId)!.filter(r => r.id !== ratingId);
-    this.ratings.set(productId, updatedRatings);
-
-    const averageRating = updatedRatings.length > 0 ? updatedRatings.reduce((sum, r) => sum + r.rating, 0) / updatedRatings.length : 0;
-    const updatedProduct = {...this.products.get(productId)!, averageRating: Math.round(averageRating * 10) / 10, ratingCount: updatedRatings.length};
-    this.products.set(productId, updatedProduct);
-
-    await this.saveData();
-    return updatedProduct;
-  }
-
+  // Giveaway methods
   async createGiveawayEntry(entryData: InsertGiveaway): Promise<GiveawayEntry> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
     const entry: GiveawayEntry = {
       id: this.currentGiveawayEntryId++,
       email: entryData.email,
       receiptImage: entryData.receiptImage,
+      ipAddress: entryData.ipAddress,
       status: entryData.status || 'pending',
-      submittedAt: new Date().toISOString()
+      createdAt: entryData.createdAt?.toISOString() || new Date().toISOString()
     };
-
     this.giveawayEntries.set(entry.id, entry);
     await this.saveData();
     return entry;
   }
 
+  async checkRecentGiveawayEntriesByIP(ipAddress: string, minutes: number): Promise<number> {
+    const cutoff = new Date(Date.now() - minutes * 60 * 1000);
+    return Array.from(this.giveawayEntries.values()).filter(
+      entry => entry.ipAddress === ipAddress && new Date(entry.createdAt) > cutoff
+    ).length;
+  }
+
   async updateGiveawayEntryStatus(id: number, status: 'pending' | 'approved' | 'rejected'): Promise<GiveawayEntry | undefined> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
     const entry = this.giveawayEntries.get(id);
     if (!entry) return undefined;
 
@@ -641,17 +396,7 @@ class MemStorage implements IStorage {
   }
 
   async getGiveawayEntries(): Promise<GiveawayEntry[]> {
-    if (!this.connected) {
-      throw new Error('Storage is not initialized');
-    }
     return Array.from(this.giveawayEntries.values());
-  }
-
-  // Placeholder for email sending functionality - replace with actual implementation using Flask-Mail or similar
-  private async sendEmail(email: string, orderID: string, productLink: string | null): Promise<void> {
-    console.log(`Sending email to ${email} for order ${orderID} (product link: ${productLink})`);
-    // Add your email sending logic here using Flask-Mail or another email service.
-    //  Remember to handle potential errors and implement robust security measures to prevent spam.
   }
 }
 

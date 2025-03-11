@@ -4,6 +4,8 @@ import { Strategy as LocalStrategy } from 'passport-local';
 import bcrypt from 'bcryptjs';
 import session from 'express-session';
 import { storage } from './storage.js';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 
 declare global {
   namespace Express {
@@ -15,6 +17,49 @@ declare global {
     }
   }
 }
+
+// Configure nodemailer
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  }
+});
+
+// Store password reset tokens
+const resetTokens = new Map<string, { userId: number; expires: Date }>();
+
+passport.use(new LocalStrategy(async (username, password, done) => {
+  try {
+    const user = await storage.getUserByUsername(username);
+    if (!user) {
+      return done(null, false, { message: 'Invalid username or password' });
+    }
+
+    const isValid = await storage.verifyUserPassword(user.id, password);
+    if (!isValid) {
+      return done(null, false, { message: 'Invalid username or password' });
+    }
+
+    return done(null, user);
+  } catch (error) {
+    return done(error);
+  }
+}));
+
+passport.serializeUser((user: any, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id: number, done) => {
+  try {
+    const user = await storage.getUser(id);
+    done(null, user);
+  } catch (error) {
+    done(error);
+  }
+});
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = await bcrypt.genSalt(10);
@@ -41,40 +86,6 @@ export async function setupAuth(app: express.Express) {
   // Initialize passport
   app.use(passport.initialize());
   app.use(passport.session());
-
-  // Configure local strategy
-  passport.use(new LocalStrategy(async (username, password, done) => {
-    try {
-      const user = await storage.getUserByUsername(username);
-      if (!user) {
-        return done(null, false, { message: 'Invalid username or password' });
-      }
-
-      const isValid = await comparePasswords(password, user.password);
-      if (!isValid) {
-        return done(null, false, { message: 'Invalid username or password' });
-      }
-
-      return done(null, user);
-    } catch (error) {
-      return done(error);
-    }
-  }));
-
-  // Serialize user for the session
-  passport.serializeUser((user: any, done) => {
-    done(null, user.id);
-  });
-
-  // Deserialize user from the session
-  passport.deserializeUser(async (id: number, done) => {
-    try {
-      const user = await storage.getUser(id);
-      done(null, user);
-    } catch (error) {
-      done(error);
-    }
-  });
 
   // Authentication middleware
   app.post('/api/login', passport.authenticate('local'), (req, res) => {
@@ -111,7 +122,70 @@ export async function setupAuth(app: express.Express) {
   app.get("/api/user", isAuthenticated, (req, res) => {
     res.json(req.user);
   });
+
+  app.post('/api/forgot-password', async (req, res) => {
+    try {
+      const token = await generateResetToken(req.body.email);
+      res.json({ message: 'Password reset email sent successfully' });
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to send password reset email' });
+    }
+  });
+
+  app.post('/api/reset-password', async (req, res) => {
+    try {
+      await resetPassword(req.body.token, req.body.newPassword);
+      res.json({ message: 'Password reset successfully' });
+    } catch (error) {
+      res.status(400).json({ error: 'Failed to reset password' });
+    }
+  });
 }
+
+export const generateResetToken = async (email: string) => {
+  const user = await storage.getUserByEmail(email);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date();
+  expires.setHours(expires.getHours() + 1); // Token expires in 1 hour
+
+  resetTokens.set(token, { userId: user.id, expires });
+
+  // Send reset email
+  const resetUrl = `${process.env.APP_URL}/reset-password?token=${token}`;
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Password Reset Request',
+    html: `
+      <p>You requested a password reset. Click the link below to reset your password:</p>
+      <a href="${resetUrl}">Reset Password</a>
+      <p>This link will expire in 1 hour.</p>
+      <p>If you didn't request this, please ignore this email.</p>
+    `
+  });
+
+  return token;
+};
+
+export const resetPassword = async (token: string, newPassword: string) => {
+  const resetInfo = resetTokens.get(token);
+  if (!resetInfo) {
+    throw new Error('Invalid or expired reset token');
+  }
+
+  if (resetInfo.expires < new Date()) {
+    resetTokens.delete(token);
+    throw new Error('Reset token has expired');
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await storage.updateUserPassword(resetInfo.userId, hashedPassword);
+  resetTokens.delete(token);
+};
 
 // Middleware to check if user is authenticated
 export function isAuthenticated(req: express.Request, res: express.Response, next: express.NextFunction) {

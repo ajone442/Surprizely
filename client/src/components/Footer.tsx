@@ -1,7 +1,6 @@
-
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { ExternalLink, Settings, Mail, Instagram, Twitter, Facebook } from "lucide-react";
+import { ExternalLink, Settings, Mail, Instagram, Twitter, Facebook, Activity } from "lucide-react";
 
 export default function Footer() {
   const { user } = useAuth();
@@ -74,6 +73,14 @@ export default function Footer() {
                   </div>
                 </Link>
               </li>
+              <li>
+                <Link href="/status">
+                  <div className="flex items-center text-sm text-muted-foreground hover:text-primary cursor-pointer">
+                    <Activity className="mr-1 h-4 w-4" />
+                    System Status
+                  </div>
+                </Link>
+              </li>
               {user?.isAdmin && (
                 <li>
                   <Link href="/admin">
@@ -105,7 +112,7 @@ export default function Footer() {
         <div className="mt-8 pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Suprizely. All rights reserved.
+              {new Date().getFullYear()} Suprizely. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy">
