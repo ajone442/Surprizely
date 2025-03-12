@@ -13,16 +13,16 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
-// Configure neon to work in serverless environments
-neonConfig.fetchConnectionCache = true;
-
+// Configure neon client
 const sql_client = neon(process.env.DATABASE_URL);
 const db = drizzle(sql_client);
 
-// Create a PostgreSQL pool for session store
+// Create a PostgreSQL pool for session store with proper SSL config
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 interface PgStoreConfig {
@@ -54,11 +54,21 @@ class PostgresStorage {
     return PostgresStorage.instance;
   }
 
-  async init(): Promise<void> {
+  async init() {
     try {
       // Test database connection
-      const result = await sql_client`SELECT NOW()`;
-      console.log('Successfully connected to PostgreSQL database');
+      await pool.query('SELECT NOW()');
+      console.log('Successfully connected to database');
+      
+      // Initialize session table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS "session" (
+          "sid" varchar NOT NULL COLLATE "default",
+          "sess" json NOT NULL,
+          "expire" timestamp(6) NOT NULL,
+          CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+        )`);
+      console.log('Session table initialized');
     } catch (error) {
       console.error('Failed to connect to database:', error);
       throw error;
