@@ -18,19 +18,26 @@ async function startServer() {
 
     // Basic middleware
     app.use(express.json());
-    app.use(cors());
+    app.use(cors({
+      origin: isProd ? 'https://surprizely.onrender.com' : 'http://localhost:10000',
+      credentials: true
+    }));
 
     // Auth setup (includes session)
+    app.set('trust proxy', 1); // Trust first proxy for secure cookies
     app.use(session({
       store: storage.sessionStore,
       secret: process.env.SESSION_SECRET || 'development_secret',
       resave: false,
       saveUninitialized: false,
-      proxy: process.env.NODE_ENV === 'production',
+      name: 'surprizely.sid',
+      proxy: true,
       cookie: { 
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: true,
+        path: '/'
       }
     }));
     await setupAuth(app);

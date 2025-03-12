@@ -1,12 +1,12 @@
 import { drizzle } from 'drizzle-orm/neon-http';
 import { sql } from 'drizzle-orm';
 import { neon, neonConfig } from '@neondatabase/serverless';
-import { Store, SessionData } from 'express-session';
+import session from 'express-session';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import * as schema from '../shared/schema.js';
 import ConnectPgSimple from 'connect-pg-simple';
-import { PoolConfig } from 'pg';
+import { Pool } from 'pg';
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is required");
@@ -17,6 +17,12 @@ neonConfig.fetchConnectionCache = true;
 
 const sql_client = neon(process.env.DATABASE_URL);
 const db = drizzle(sql_client);
+
+// Create a PostgreSQL pool for session store
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 interface PgStoreConfig {
   pool: any;
@@ -29,17 +35,12 @@ interface PgStoreConfig {
 
 class PostgresStorage {
   private static instance: PostgresStorage;
-  sessionStore: Store;
+  sessionStore: session.Store;
 
   private constructor() {
-    const PgStore = ConnectPgSimple(Store as any);
+    const PgStore = ConnectPgSimple(session);
     this.sessionStore = new PgStore({
-      pool: {
-        options: {
-          connectionString: process.env.DATABASE_URL,
-          ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-        }
-      },
+      pool,
       tableName: 'session',
       createTableIfMissing: true
     } as PgStoreConfig);
