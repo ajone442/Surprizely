@@ -30,7 +30,10 @@ const transporter = nodemailer.createTransport({
 // Store password reset tokens
 const resetTokens = new Map<string, { userId: number; expires: Date }>();
 
-passport.use(new LocalStrategy(async (username, password, done) => {
+passport.use(new LocalStrategy({
+  usernameField: 'username',
+  passwordField: 'password'
+}, async (username, password, done) => {
   try {
     const user = await storage.getUserByUsername(username);
     if (!user) {
@@ -74,11 +77,13 @@ export async function setupAuth(app: express.Express) {
   // Session middleware
   app.use(session({
     secret: process.env.SESSION_SECRET || 'dev-secret-key',
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     store: storage.sessionStore,
     cookie: {
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
   }));

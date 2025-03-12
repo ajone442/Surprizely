@@ -13,5 +13,13 @@
     "username": "admin",
     "isAdmin": true,
     "id": 3
+  },
+  {
+    "id": 4,
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "$2b$10$pjcn/k7S.zLvVk4E1UKhUuo2ldW2Fac9enobK1a6z1Sq3cS.94k..",
+    "isAdmin": false,
+    "createdAt": "2025-03-12T00:01:31.034Z"
   }
 ]

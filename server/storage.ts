@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import fs from "fs";
 import { Store } from 'express-session';
 import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 import { z } from 'zod';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -307,9 +308,11 @@ class MemStorage {
   }
 
   async createUser(userData: InsertUser): Promise<User> {
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
     const user: User = {
       id: this.currentUserId++,
       ...userData,
+      password: hashedPassword,
       isAdmin: userData.isAdmin || false,
       createdAt: new Date().toISOString()
     };
@@ -331,7 +334,8 @@ class MemStorage {
     const user = this.users.get(userId);
     if (!user) return undefined;
 
-    user.password = password;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user.password = hashedPassword;
     await this.saveData();
     return user;
   }
@@ -339,7 +343,7 @@ class MemStorage {
   async verifyUserPassword(userId: number, password: string): Promise<boolean> {
     const user = await this.getUser(userId);
     if (!user) return false;
-    return user.password === password; // In production, use proper password hashing
+    return await bcrypt.compare(password, user.password);
   }
 
   // Product methods
