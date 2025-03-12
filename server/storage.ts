@@ -1,6 +1,5 @@
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
-import { neon, neonConfig } from '@neondatabase/serverless';
 import session from 'express-session';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
@@ -13,17 +12,16 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
-// Configure neon client
-const sql_client = neon(process.env.DATABASE_URL);
-const db = drizzle(sql_client);
-
-// Create a PostgreSQL pool for session store with proper SSL config
+// Create a PostgreSQL pool for all database operations
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
 });
+
+// Initialize drizzle with the pool
+const db = drizzle(pool);
 
 interface PgStoreConfig {
   pool: any;
@@ -81,13 +79,13 @@ class PostgresStorage {
 
   // User methods
   async getUser(id: number): Promise<schema.User | undefined> {
-    const users = await db.select().from(schema.users).where(sql`${schema.users.id} = ${id}`).limit(1);
-    return users[0];
+    const result = await db.select().from(schema.users).where(sql`${schema.users.id} = ${id}`);
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<schema.User | undefined> {
-    const users = await db.select().from(schema.users).where(sql`${schema.users.username} = ${username}`).limit(1);
-    return users[0];
+    const result = await db.select().from(schema.users).where(sql`${schema.users.username} = ${username}`);
+    return result[0];
   }
 
   async createUser(userData: schema.InsertUser): Promise<schema.User> {
@@ -121,8 +119,8 @@ class PostgresStorage {
   }
 
   async getProduct(id: number): Promise<schema.Product | undefined> {
-    const products = await db.select().from(schema.products).where(sql`${schema.products.id} = ${id}`).limit(1);
-    return products[0];
+    const result = await db.select().from(schema.products).where(sql`${schema.products.id} = ${id}`);
+    return result[0];
   }
 
   async createProduct(productData: schema.InsertProduct): Promise<schema.Product> {
