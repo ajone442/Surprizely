@@ -1,4 +1,5 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon, neonConfig } from '@neondatabase/serverless';
 import { sql } from 'drizzle-orm';
 import session from 'express-session';
 import crypto from 'crypto';
@@ -12,16 +13,27 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
-// Create a PostgreSQL pool for all database operations
+// Configure neon with robust settings
+neonConfig.fetchConnectionCache = true;
+neonConfig.wsProxy = (host) => `wss://${host}`;
+neonConfig.useSecureWebSocket = true;
+neonConfig.pipelineTLS = true;
+neonConfig.pipelineConnect = true;
+neonConfig.forceDisablePgSSL = false;
+
+// Create SQL client
+const sqlClient = neon(process.env.DATABASE_URL);
+
+// Initialize drizzle with the neon client
+const db = drizzle(sqlClient);
+
+// Create a PostgreSQL pool for session store only
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
 });
-
-// Initialize drizzle with the pool
-const db = drizzle(pool);
 
 interface PgStoreConfig {
   pool: any;
@@ -55,17 +67,17 @@ class PostgresStorage {
   async init() {
     try {
       // Test database connection
-      await pool.query('SELECT NOW()');
-      console.log('Successfully connected to database');
+      const result = await sqlClient`SELECT NOW()`;
+      console.log('Successfully connected to database', result[0].now);
       
       // Initialize session table
-      await pool.query(`
+      await sqlClient`
         CREATE TABLE IF NOT EXISTS "session" (
           "sid" varchar NOT NULL COLLATE "default",
           "sess" json NOT NULL,
           "expire" timestamp(6) NOT NULL,
           CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
-        )`);
+        )`;
       console.log('Session table initialized');
     } catch (error) {
       console.error('Failed to connect to database:', error);
