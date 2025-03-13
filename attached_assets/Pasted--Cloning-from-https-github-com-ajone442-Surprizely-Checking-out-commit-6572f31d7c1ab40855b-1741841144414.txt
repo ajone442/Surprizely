@@ -1,0 +1,163 @@
+==> Cloning from https://github.com/ajone442/Surprizely
+==> Checking out commit 6572f31d7c1ab40855bd2ef7478ecd5d4893ebc0 in branch main
+==> Downloading cache...
+==> Transferred 531MB in 12s. Extraction took 1s.
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 449B done
+#1 DONE 0.0s
+#2 [internal] load metadata for docker.io/library/node:18
+#2 ...
+#3 [auth] library/node:pull render-prod/docker-mirror-repository/library/node:pull token for us-west1-docker.pkg.dev
+#3 DONE 0.0s
+#2 [internal] load metadata for docker.io/library/node:18
+#2 DONE 0.7s
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+#5 [1/6] FROM docker.io/library/node:18@sha256:ba756f198b4b1e0114b53b23121c8ae27f7ae4d5d95ca4a0554b0649cc9c7dcf
+#5 resolve docker.io/library/node:18@sha256:ba756f198b4b1e0114b53b23121c8ae27f7ae4d5d95ca4a0554b0649cc9c7dcf done
+#5 DONE 0.0s
+#6 importing cache manifest from local:6262234170048478296
+#6 inferred cache manifest type: application/vnd.oci.image.index.v1+json done
+#6 DONE 0.0s
+#7 [internal] load build context
+#7 transferring context: 1.14MB 0.1s done
+#7 DONE 0.1s
+#8 [2/6] WORKDIR /app
+#8 sha256:155ad54a8b2812a0ec559ff82c0c6f0f0dddb337a226b11879f09e15f67b69fc 5.24MB / 48.48MB 0.2s
+#8 sha256:155ad54a8b2812a0ec559ff82c0c6f0f0dddb337a226b11879f09e15f67b69fc 13.63MB / 48.48MB 0.3s
+#8 sha256:155ad54a8b2812a0ec559ff82c0c6f0f0dddb337a226b11879f09e15f67b69fc 22.02MB / 48.48MB 0.5s
+#8 sha256:155ad54a8b2812a0ec559ff82c0c6f0f0dddb337a226b11879f09e15f67b69fc 30.41MB / 48.48MB 0.6s
+#8 sha256:155ad54a8b2812a0ec559ff82c0c6f0f0dddb337a226b11879f09e15f67b69fc 48.23MB / 48.48MB 0.9s
+#8 sha256:155ad54a8b2812a0ec559ff82c0c6f0f0dddb337a226b11879f09e15f67b69fc 48.48MB / 48.48MB 0.9s done
+#8 extracting sha256:155ad54a8b2812a0ec559ff82c0c6f0f0dddb337a226b11879f09e15f67b69fc
+#8 extracting sha256:155ad54a8b2812a0ec559ff82c0c6f0f0dddb337a226b11879f09e15f67b69fc 2.6s done
+#8 sha256:8031108f3cda87bb32f090262d0109c8a0db99168050967becefad502e9a681b 9.44MB / 24.06MB 0.2s
+#8 sha256:8031108f3cda87bb32f090262d0109c8a0db99168050967becefad502e9a681b 18.87MB / 24.06MB 0.3s
+#8 sha256:8031108f3cda87bb32f090262d0109c8a0db99168050967becefad502e9a681b 24.06MB / 24.06MB 0.4s done
+#8 extracting sha256:8031108f3cda87bb32f090262d0109c8a0db99168050967becefad502e9a681b
+#8 extracting sha256:8031108f3cda87bb32f090262d0109c8a0db99168050967becefad502e9a681b 1.1s done
+#8 sha256:1d281e50d3e435595c266df06531a7e8c2ebb0c185622c8ab2eed8d760e6576b 10.49MB / 64.39MB 0.2s
+#8 sha256:1d281e50d3e435595c266df06531a7e8c2ebb0c185622c8ab2eed8d760e6576b 18.87MB / 64.39MB 0.3s
+#8 sha256:1d281e50d3e435595c266df06531a7e8c2ebb0c185622c8ab2eed8d760e6576b 27.26MB / 64.39MB 0.5s
+#8 sha256:1d281e50d3e435595c266df06531a7e8c2ebb0c185622c8ab2eed8d760e6576b 36.70MB / 64.39MB 0.6s
+#8 sha256:1d281e50d3e435595c266df06531a7e8c2ebb0c185622c8ab2eed8d760e6576b 45.09MB / 64.39MB 0.8s
+#8 sha256:1d281e50d3e435595c266df06531a7e8c2ebb0c185622c8ab2eed8d760e6576b 54.53MB / 64.39MB 0.9s
+#8 sha256:1d281e50d3e435595c266df06531a7e8c2ebb0c185622c8ab2eed8d760e6576b 64.39MB / 64.39MB 1.1s done
+#8 extracting sha256:1d281e50d3e435595c266df06531a7e8c2ebb0c185622c8ab2eed8d760e6576b
+#8 extracting sha256:1d281e50d3e435595c266df06531a7e8c2ebb0c185622c8ab2eed8d760e6576b 3.7s done
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 8.39MB / 211.34MB 0.2s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 25.17MB / 211.34MB 0.5s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 44.04MB / 211.34MB 0.8s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 60.82MB / 211.34MB 1.1s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 77.59MB / 211.34MB 1.4s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 94.37MB / 211.34MB 1.7s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 111.15MB / 211.34MB 2.0s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 127.93MB / 211.34MB 2.3s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 143.65MB / 211.34MB 2.6s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 161.48MB / 211.34MB 2.9s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 178.50MB / 211.34MB 3.2s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 196.08MB / 211.34MB 3.5s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 211.34MB / 211.34MB 3.8s
+#8 sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 211.34MB / 211.34MB 3.9s done
+#8 extracting sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4
+#8 extracting sha256:447713e77b4fc3658cfba0c1e816b70ff6d9bf06563dc8cfcb0459406aed33b4 9.9s done
+#8 sha256:f87facc2c491970afc16ec1d15bc7a2be960b00caa9467613baf0ac87d4e7bdf 3.32kB / 3.32kB done
+#8 extracting sha256:f87facc2c491970afc16ec1d15bc7a2be960b00caa9467613baf0ac87d4e7bdf 0.0s done
+#8 sha256:2f9475d0583b480d241fbc3e81dccb2c8328ed6cbe28553bdcf241b4ae3c3edc 9.44MB / 45.70MB 0.2s
+#8 sha256:2f9475d0583b480d241fbc3e81dccb2c8328ed6cbe28553bdcf241b4ae3c3edc 18.87MB / 45.70MB 0.3s
+#8 sha256:2f9475d0583b480d241fbc3e81dccb2c8328ed6cbe28553bdcf241b4ae3c3edc 26.26MB / 45.70MB 0.5s
+#8 sha256:2f9475d0583b480d241fbc3e81dccb2c8328ed6cbe28553bdcf241b4ae3c3edc 36.70MB / 45.70MB 0.6s
+#8 sha256:2f9475d0583b480d241fbc3e81dccb2c8328ed6cbe28553bdcf241b4ae3c3edc 45.70MB / 45.70MB 0.8s done
+#8 extracting sha256:2f9475d0583b480d241fbc3e81dccb2c8328ed6cbe28553bdcf241b4ae3c3edc
+#8 extracting sha256:2f9475d0583b480d241fbc3e81dccb2c8328ed6cbe28553bdcf241b4ae3c3edc 3.4s done
+#8 sha256:396e9c5702ad97405a8485ee635a41c2c4fdbb6636cec4df8bde46e611f0af68 1.25MB / 1.25MB 0.0s done
+#8 extracting sha256:396e9c5702ad97405a8485ee635a41c2c4fdbb6636cec4df8bde46e611f0af68 0.1s done
+#8 sha256:c8728cb69dce1bba4cb95cbaa0e0ae129482b9428acce138dcbab3176854f8d9 447B / 447B done
+#8 extracting sha256:c8728cb69dce1bba4cb95cbaa0e0ae129482b9428acce138dcbab3176854f8d9 done
+#8 sha256:7f4fdaf4ccb23d14b31207d99044208f0a85b504cf50c6c10a34531609c9801b 92B / 92B done
+#8 extracting sha256:7f4fdaf4ccb23d14b31207d99044208f0a85b504cf50c6c10a34531609c9801b done
+#8 CACHED
+#9 [3/6] COPY package*.json ./
+#9 DONE 0.0s
+#10 [4/6] RUN npm install
+#10 9.806 npm warn ERESOLVE overriding peer dependency
+#10 9.807 npm warn While resolving: rest-express@1.0.0
+#10 9.807 npm warn Found: @neondatabase/serverless@0.10.4
+#10 9.807 npm warn node_modules/@neondatabase/serverless
+#10 9.807 npm warn   @neondatabase/serverless@"^0.9.0" from the root project
+#10 9.807 npm warn   1 more (drizzle-orm)
+#10 9.807 npm warn
+#10 9.807 npm warn Could not resolve dependency:
+#10 9.807 npm warn peerOptional @neondatabase/serverless@">=0.10.0" from drizzle-orm@0.39.3
+#10 9.807 npm warn node_modules/drizzle-orm
+#10 9.807 npm warn   drizzle-orm@"^0.29.4" from the root project
+#10 9.807 npm warn   1 more (drizzle-zod)
+#10 10.77 npm error code ERESOLVE
+#10 10.77 npm error ERESOLVE could not resolve
+#10 10.77 npm error
+#10 10.77 npm error While resolving: rest-express@1.0.0
+#10 10.77 npm error Found: drizzle-orm@0.39.3
+#10 10.77 npm error node_modules/drizzle-orm
+#10 10.77 npm error   drizzle-orm@"^0.29.4" from the root project
+#10 10.77 npm error   peer drizzle-orm@">=0.36.0" from drizzle-zod@0.7.0
+#10 10.77 npm error   node_modules/drizzle-zod
+#10 10.77 npm error     drizzle-zod@"^0.7.0" from the root project
+#10 10.77 npm error
+#10 10.77 npm error Could not resolve dependency:
+#10 10.77 npm error drizzle-orm@"^0.29.4" from the root project
+#10 10.77 npm error
+#10 10.77 npm error Conflicting peer dependency: @types/react@19.0.10
+#10 10.77 npm error node_modules/@types/react
+#10 10.77 npm error   peerOptional @types/react@"^19.0.0" from react-native@0.78.0
+#10 10.77 npm error   node_modules/react-native
+#10 10.77 npm error     peer react-native@"*" from expo-sqlite@15.1.2
+#10 10.77 npm error     node_modules/expo-sqlite
+#10 10.77 npm error       peerOptional expo-sqlite@">=13.2.0" from drizzle-orm@0.29.5
+#10 10.77 npm error       node_modules/drizzle-orm
+#10 10.77 npm error         drizzle-orm@"^0.29.4" from the root project
+#10 10.77 npm error     peer react-native@"*" from expo@52.0.38
+#10 10.77 npm error     node_modules/expo
+#10 10.77 npm error       peer expo@"*" from expo-sqlite@15.1.2
+#10 10.77 npm error       node_modules/expo-sqlite
+#10 10.77 npm error         peerOptional expo-sqlite@">=13.2.0" from drizzle-orm@0.29.5
+#10 10.77 npm error         node_modules/drizzle-orm
+#10 10.77 npm error       1 more (@expo/dom-webview)
+#10 10.77 npm error     3 more (@expo/dom-webview, @expo/metro-runtime, react-native-webview)
+#10 10.77 npm error
+#10 10.77 npm error Fix the upstream dependency conflict, or retry
+#10 10.77 npm error this command with --force or --legacy-peer-deps
+#10 10.77 npm error to accept an incorrect (and potentially broken) dependency resolution.
+#10 10.77 npm error
+#10 10.77 npm error
+#10 10.77 npm error For a full report see:
+#10 10.77 npm error /root/.npm/_logs/2025-03-13T04_44_57_342Z-eresolve-report.txt
+#10 10.77 npm notice
+#10 10.77 npm notice New major version of npm available! 10.8.2 -> 11.2.0
+#10 10.77 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.2.0
+#10 10.77 npm notice To update run: npm install -g npm@11.2.0
+#10 10.77 npm notice
+#10 10.77 npm error A complete log of this run can be found in: /root/.npm/_logs/2025-03-13T04_44_57_342Z-debug-0.log
+#10 ERROR: process "/bin/sh -c npm install" did not complete successfully: exit code: 1
+------
+ > [4/6] RUN npm install:
+10.77 npm error
+10.77 npm error
+10.77 npm error For a full report see:
+10.77 npm error /root/.npm/_logs/2025-03-13T04_44_57_342Z-eresolve-report.txt
+10.77 npm notice
+10.77 npm notice New major version of npm available! 10.8.2 -> 11.2.0
+10.77 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.2.0
+10.77 npm notice To update run: npm install -g npm@11.2.0
+10.77 npm notice
+10.77 npm error A complete log of this run can be found in: /root/.npm/_logs/2025-03-13T04_44_57_342Z-debug-0.log
+------
+Dockerfile:11
+--------------------
+   9 |     
+  10 |     # Install dependencies
+  11 | >>> RUN npm install
+  12 |     
+  13 |     # Copy the rest of the application code
+--------------------
+error: failed to solve: process "/bin/sh -c npm install" did not complete successfully: exit code: 1
