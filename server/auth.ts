@@ -4,6 +4,7 @@ import { Strategy as LocalStrategy } from 'passport-local';
 import bcrypt from 'bcryptjs';
 import session from 'express-session';
 import { storage } from './storage.js';
+import { User } from '../shared/schema.js';
 
 declare global {
   namespace Express {
@@ -19,7 +20,7 @@ declare global {
 passport.use(new LocalStrategy({
   usernameField: 'username',
   passwordField: 'password'
-}, async (username, password, done) => {
+}, async (username: string, password: string, done: Function) => {
   try {
     const user = await storage.getUserByUsername(username);
     if (!user) {
@@ -37,11 +38,11 @@ passport.use(new LocalStrategy({
   }
 }));
 
-passport.serializeUser((user: any, done) => {
+passport.serializeUser((user: Express.User, done: Function) => {
   done(null, user.id);
 });
 
-passport.deserializeUser(async (id: number, done) => {
+passport.deserializeUser(async (id: number, done: Function) => {
   try {
     const user = await storage.getUser(id);
     done(null, user);
@@ -63,14 +64,17 @@ export async function setupAuth(app: express.Express) {
   // Session middleware
   app.use(session({
     secret: process.env.SESSION_SECRET || 'dev-secret-key',
-    resave: true,
-    saveUninitialized: true,
+    resave: false,
+    saveUninitialized: false,
     store: storage.sessionStore,
-    cookie: {
-      httpOnly: true,
+    name: 'surprizely.sid',
+    proxy: true,
+    cookie: { 
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      httpOnly: true,
+      path: '/'
     }
   }));
 
@@ -79,21 +83,38 @@ export async function setupAuth(app: express.Express) {
   app.use(passport.session());
 
   // Authentication middleware
-  app.post('/api/login', passport.authenticate('local'), (req, res) => {
-    res.json(req.user);
+  app.post('/api/login', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    passport.authenticate('local', (err: Error, user: Express.User | false, info: { message: string }) => {
+      if (err) {
+        console.error('Login error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      if (!user) {
+        return res.status(401).json({ error: info.message || 'Invalid credentials' });
+      }
+      req.logIn(user, (err: Error) => {
+        if (err) {
+          console.error('Session error:', err);
+          return res.status(500).json({ error: 'Failed to establish session' });
+        }
+        const { password, ...userWithoutPassword } = user;
+        res.json(userWithoutPassword);
+      });
+    })(req, res, next);
   });
 
-  app.post('/api/logout', (req, res) => {
+  app.post('/api/logout', (req: express.Request, res: express.Response) => {
     req.logout(() => {
       res.sendStatus(200);
     });
   });
 
-  app.post("/api/register", async (req, res, next) => {
+  app.post("/api/register", async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     try {
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
-        return res.status(400).json({ error: "Username already exists" });
+        res.status(400).json({ error: "Username already exists" });
+        return;
       }
 
       const user = await storage.createUser({
@@ -101,9 +122,12 @@ export async function setupAuth(app: express.Express) {
         password: await hashPassword(req.body.password)
       });
 
-      req.login(user, (err) => {
-        if (err) return next(err);
-        // Don't send the password hash in the response
+      req.login(user, (err: Error) => {
+        if (err) {
+          console.error('Login error after registration:', err);
+          res.status(500).json({ error: 'Failed to log in after registration' });
+          return;
+        }
         const { password, ...userWithoutPassword } = user;
         res.status(201).json(userWithoutPassword);
       });
@@ -113,11 +137,11 @@ export async function setupAuth(app: express.Express) {
     }
   });
 
-  app.get("/api/user", isAuthenticated, (req, res) => {
+  app.get("/api/user", isAuthenticated, (req: express.Request, res: express.Response) => {
     if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
     }
-    // Don't send the password hash in the response
     const { password, ...userWithoutPassword } = req.user;
     res.json(userWithoutPassword);
   });

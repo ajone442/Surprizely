@@ -113,7 +113,12 @@ class PostgresStorage {
   async verifyUserPassword(userId: number, password: string): Promise<boolean> {
     const user = await this.getUser(userId);
     if (!user) return false;
-    return await bcrypt.compare(password, user.password);
+    try {
+      return await bcrypt.compare(password, user.password);
+    } catch (error) {
+      console.error('Password verification error:', error);
+      return false;
+    }
   }
 
   async updateUserPassword(userId: number, password: string): Promise<schema.User | undefined> {
