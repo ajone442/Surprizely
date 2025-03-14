@@ -1,15 +1,13 @@
-
 import nodemailer from 'nodemailer';
 
-// Configure the email transporter
-let transporter: nodemailer.Transporter;
+let transporter: nodemailer.Transporter | null = null;
 
-// Initialize the transporter
+// Configure the email transporter
 export function initEmailTransporter() {
   // Check if we have the email configurations
   if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn('Email configuration missing. Email functionality will be disabled.');
-    return null;
+    console.log('Email configuration not found, email notifications will be disabled');
+    return;
   }
 
   transporter = nodemailer.createTransport({
@@ -18,24 +16,23 @@ export function initEmailTransporter() {
     secure: process.env.EMAIL_SECURE === 'true',
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
+      pass: process.env.EMAIL_PASS
+    }
   });
-
-  return transporter;
 }
 
-export async function sendGiveawayConfirmation(email: string, orderID: string) {
+export async function sendGiveawayConfirmation(email: string, orderID: string): Promise<boolean> {
   if (!transporter) {
-    console.warn('Email transporter not initialized. Skipping email send.');
+    console.log('Email transporter not initialized');
     return false;
   }
 
   try {
-    const info = await transporter.sendMail({
-      from: `"Suprizely Giveaway" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || 'noreply@surprizely.com',
       to: email,
-      subject: "You've Been Entered Into Our Giveaway! 🎉",
+      subject: 'Giveaway Entry Confirmation',
+      text: `Thank you for entering our giveaway! We've received your entry and will review it shortly.`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #0097FB; text-align: center;">Thanks for Entering Our Giveaway!</h1>
@@ -77,8 +74,7 @@ export async function sendGiveawayConfirmation(email: string, orderID: string) {
         </div>
       `,
     });
-
-    console.log('Giveaway confirmation email sent:', info.messageId);
+    console.log('Giveaway confirmation email sent');
     return true;
   } catch (error) {
     console.error('Failed to send giveaway confirmation email:', error);

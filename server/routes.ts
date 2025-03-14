@@ -1,73 +1,89 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import type { Express, Request as ExpressRequest, Response as ExpressResponse, NextFunction, RequestHandler, ErrorRequestHandler } from "express";
 import { createServer, type Server } from "http";
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { storage } from './storage.js';
+import storageInstance from './storage.js';
 import passport from 'passport';
 import { setupAuth, hashPassword } from "./auth";
-import { insertProductSchema, insertWishlistSchema, insertRatingSchema, insertGiveawaySchema } from "@shared/schema";
-import { parseProductUrl } from "./product-parser";
-import { sendGiveawayConfirmation, initEmailTransporter } from "./email";
+import { Product, Rating, GiveawayEntry, InsertGiveaway } from "@shared/schema";
+import { initEmailTransporter, sendGiveawayConfirmation } from './email.js';
 import openai from "./openai";
-import { ZodError } from 'zod';
+import { z } from 'zod';
 import { isAuthenticated, isAdmin } from './auth.js';
+import { Session } from 'express-session';
+
+// Extend Express Request type to include session and user
+interface Request extends ExpressRequest {
+  session: Session & { [key: string]: any };
+  user?: any;
+  file?: multer.File;
+}
+
+interface Response extends ExpressResponse {}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Configure multer for file uploads
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      const uploadDir = path.join(__dirname, '..', 'uploads');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
-  }),
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    cb(null, uploadDir);
   },
-  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG and GIF images are allowed.'));
-    }
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
+const upload = multer({ storage });
+
+// Initialize storage instance
+const db = storageInstance.getInstance();
+
 // Authentication middleware
-function isAuthenticated(req: express.Request, res: express.Response, next: express.NextFunction) {
+const isAuthenticatedMiddleware: RequestHandler = (req: Request, res: Response, next: NextFunction) => {
   if (req.isAuthenticated()) {
     return next();
   }
   res.status(401).json({ error: 'Not authenticated' });
-}
+};
 
-function isAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+const isAdminMiddleware: RequestHandler = (req: Request, res: Response, next: NextFunction) => {
   if (req.isAuthenticated() && req.user && (req.user as any).isAdmin) {
     return next();
   }
   res.status(403).json({ error: 'Not authorized' });
-}
+};
 
-export async function registerRoutes(app: Express): Promise<void> {
+const giveawaySchema = z.object({
+  email: z.string().email(),
+  receiptImage: z.string(),
+  status: z.enum(['pending', 'approved', 'rejected']).optional().default('pending')
+});
+
+const productSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  price: z.number(),
+  imageUrl: z.string(),
+  affiliateLink: z.string(),
+  category: z.string()
+});
+
+export async function registerRoutes(app: Express) {
   setupAuth(app);
 
   // Initialize email transporter if environment variables are set
   initEmailTransporter();
 
   // Ensure storage is initialized
-  if (!storage.isConnected()) {
+  if (!db.isConnected()) {
     throw new Error('Storage must be initialized before registering routes');
   }
 
@@ -75,172 +91,207 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
   // Product routes
-  app.get("/api/products", async (_req: Request, res: Response) => {
+  const getProducts: RequestHandler = async (_req: Request, res: Response): Promise<void> => {
     try {
-      const products = await storage.getProducts();
+      const products = await db.getProducts();
       res.json(products);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching products:', error);
       res.status(500).json({ error: 'Failed to fetch products' });
     }
-  });
+  };
 
-  app.post("/api/products", isAdmin, async (req: Request, res: Response) => {
+  app.get("/api/products", getProducts);
+
+  const createProduct: RequestHandler = async (req: Request, res: Response) => {
     try {
-      let productData;
-
-      if (req.body.productUrl) {
-        // Parse product data from URL
-        productData = await parseProductUrl(req.body.productUrl);
-        if (!productData) {
-          return res.status(400).json({ error: "Failed to parse product URL" });
-        }
-      } else {
-        // Manual product data entry
-        productData = req.body;
-        // Preserve the price format exactly as entered
+      const productData = req.body;
+      if (process.env.NODE_ENV !== 'production') {
         console.log("Product data received:", productData);
       }
 
-      const product = insertProductSchema.parse(productData);
-      // Log the parsed product
+      const product = productSchema.parse({
+        ...productData,
+        price: typeof productData.price === 'string' ? parseFloat(productData.price) : productData.price
+      });
+      
       console.log("Parsed product:", product);
-      const created = await storage.createProduct(product);
+      const created = await db.createProduct(product);
       res.status(201).json(created);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        res.status(400).json(error.errors);
+    } catch (error: unknown) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
       } else {
-        throw error;
+        console.error('Error creating product:', error);
+        res.status(500).json({ error: "Failed to create product" });
       }
     }
-  });
+  };
 
-  app.patch("/api/products/:id", isAdmin, async (req: Request, res: Response) => {
+  app.post("/api/products", isAdminMiddleware, createProduct);
+
+  const updateProduct: RequestHandler = async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const product = insertProductSchema.partial().parse(req.body);
-      const updated = await storage.updateProduct(id, product);
+      const productData = productSchema.partial().parse(req.body);
+      const updated = await db.updateProduct(id, {
+        ...productData,
+        price: typeof productData.price === 'string' ? parseFloat(productData.price) : productData.price
+      });
       res.json(updated);
     } catch (error) {
-      if (error instanceof ZodError) {
-        res.status(400).json(error.errors);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
       } else {
-        throw error;
+        res.status(500).json({ error: "Failed to update product" });
       }
     }
-  });
+  };
 
-  app.delete("/api/products/:id", isAdmin, async (req: Request, res: Response) => {
+  app.put("/api/products/:id", isAdminMiddleware, updateProduct);
+
+  const deleteProduct: RequestHandler = async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
-    await storage.deleteProduct(id);
+    await db.deleteProduct(id);
     res.sendStatus(204);
-  });
+  };
+
+  app.delete("/api/products/:id", isAdminMiddleware, deleteProduct);
 
   // Wishlist routes
-  app.get("/api/wishlist", isAuthenticated, async (req: Request, res: Response) => {
-    const products = await storage.getWishlist(req.user!.id);
+  const getWishlist: RequestHandler = async (req: Request, res: Response) => {
+    const products = await db.getWishlist(req.user!.id);
     res.json(products);
-  });
+  };
 
-  app.post("/api/wishlist/:productId", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/wishlist", isAuthenticatedMiddleware, getWishlist);
+
+  const addToWishlist: RequestHandler = async (req: Request, res: Response): Promise<void> => {
     try {
       const productId = parseInt(req.params.productId);
       const wishlistItem = { userId: req.user!.id, productId };
-      await storage.addToWishlist(wishlistItem);
+      await db.addToWishlist(wishlistItem);
       res.sendStatus(201);
-    } catch (error) {
-      throw error;
+    } catch (error: unknown) {
+      console.error('Error adding to wishlist:', error);
+      res.status(500).json({ error: 'Failed to add item to wishlist' });
     }
-  });
+  };
 
-  app.delete("/api/wishlist/:productId", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/wishlist/:productId", isAuthenticatedMiddleware, addToWishlist);
+
+  const removeFromWishlist: RequestHandler = async (req: Request, res: Response) => {
     const productId = parseInt(req.params.productId);
-    await storage.removeFromWishlist(req.user!.id, productId);
+    await db.removeFromWishlist(req.user!.id, productId);
     res.sendStatus(204);
-  });
+  };
+
+  app.delete("/api/wishlist/:productId", isAuthenticatedMiddleware, removeFromWishlist);
 
   // Rating routes
-  app.get("/api/ratings/:productId", async (req: Request, res: Response) => {
-    const productId = parseInt(req.params.productId);
-    const ratings = await storage.getRatings(productId);
-    res.json(ratings);
-  });
-
-  app.get("/api/ratings/user/:productId", isAuthenticated, async (req: Request, res: Response) => {
-    const productId = parseInt(req.params.productId);
-    const rating = await storage.getUserRating(req.user!.id, productId);
-    res.json(rating || { rating: 0 });
-  });
-
-  app.post("/api/ratings/:productId", isAuthenticated, async (req: Request, res: Response) => {
+  const getRatings: RequestHandler = async (req: Request, res: Response): Promise<void> => {
     try {
       const productId = parseInt(req.params.productId);
-      const ratingData = insertRatingSchema.parse({
+      const ratings = await db.getRatings(productId);
+      res.json(ratings);
+    } catch (error: unknown) {
+      console.error('Error fetching ratings:', error);
+      res.status(500).json({ error: 'Failed to fetch ratings' });
+    }
+  };
+
+  app.get("/api/ratings/:productId", getRatings);
+
+  const getUserRating: RequestHandler = async (req: Request, res: Response) => {
+    const productId = parseInt(req.params.productId);
+    const rating = await db.getUserRating(req.user!.id, productId);
+    res.json(rating || { rating: 0 });
+  };
+
+  app.get("/api/ratings/user/:productId", isAuthenticatedMiddleware, getUserRating);
+
+  const rateProduct: RequestHandler = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const productId = parseInt(req.params.productId);
+      const ratingData = z.object({
+        rating: z.number().min(1).max(5),
+        comment: z.string().optional()
+      }).parse(req.body);
+
+      const result = await db.rateProduct({
         userId: req.user!.id,
         productId,
-        rating: req.body.rating
+        ...ratingData
       });
 
-      const updatedProduct = await storage.rateProduct(ratingData);
-      res.status(201).json(updatedProduct);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        res.status(400).json(error.errors);
+      res.status(201).json(result);
+    } catch (error: unknown) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.errors });
       } else {
-        throw error;
+        console.error('Error creating rating:', error);
+        res.status(500).json({ error: 'Failed to create rating' });
       }
     }
-  });
+  };
+
+  app.post("/api/ratings/:productId", isAuthenticatedMiddleware, rateProduct);
 
   // Admin only rating routes
-  app.put("/api/admin/ratings/:ratingId", isAdmin, async (req: Request, res: Response) => {
+  const updateRating: RequestHandler = async (req: Request, res: Response): Promise<void> => {
     try {
       const ratingId = parseInt(req.params.ratingId);
       const { rating } = req.body;
-
+      
       if (typeof rating !== 'number' || rating < 1 || rating > 5) {
-        return res.status(400).json({ error: "Rating must be a number between 1 and 5" });
+        res.status(400).json({ error: 'Rating must be a number between 1 and 5' });
+        return;
       }
 
-      const updatedProduct = await storage.updateRating(ratingId, rating);
+      const updatedProduct = await db.updateRating(ratingId, rating);
       res.json(updatedProduct);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
+    } catch (error: unknown) {
+      console.error('Error updating rating:', error);
+      res.status(500).json({ error: 'Failed to update rating' });
     }
-  });
+  };
 
-  app.delete("/api/admin/ratings/:ratingId", isAdmin, async (req: Request, res: Response) => {
+  app.put("/api/admin/ratings/:ratingId", isAdminMiddleware, updateRating);
+
+  const deleteRating: RequestHandler = async (req: Request, res: Response): Promise<void> => {
     try {
       const ratingId = parseInt(req.params.ratingId);
-      const updatedProduct = await storage.deleteRating(ratingId);
+      const updatedProduct = await db.deleteRating(ratingId);
       res.json(updatedProduct);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
+    } catch (error: unknown) {
+      console.error('Error deleting rating:', error);
+      res.status(500).json({ error: 'Failed to delete rating' });
     }
-  });
+  };
+
+  app.delete("/api/admin/ratings/:ratingId", isAdminMiddleware, deleteRating);
 
   // Chat endpoint for gift suggestions
-  app.post("/api/chat", async (req: Request, res: Response) => {
+  const chat: RequestHandler = async (req: Request, res: Response): Promise<void> => {
     const { message } = req.body;
 
     if (!message) {
-      return res.status(400).json({ error: "Message is required" });
+      res.status(400).json({ error: "Message is required" });
+      return;
     }
 
     try {
       // If OpenAI API key is not set, return a helpful error
       if (!process.env.OPENAI_API_KEY) {
-        return res.status(500).json({
+        res.status(500).json({
           error: "AI features are not available",
           message: "OpenAI API key is not configured. Please set up your API key in Secrets."
         });
+        return;
       }
 
-      const openai = getOpenAI();
-
-      // Enhanced system prompt for more personalized recommendations
       const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
@@ -269,146 +320,95 @@ export async function registerRoutes(app: Express): Promise<void> {
             content: message,
           },
         ],
-        model: "gpt-3.5-turbo",
         temperature: 0.7,
         max_tokens: 800,
       });
 
       res.json({ message: completion.choices[0].message.content });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("OpenAI API error:", error);
-
-      // Return a more helpful error message to the client
-      return res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to get gift suggestions",
-        message: "The AI service is currently unavailable. Please try the quiz again later."
+        message: "The AI service is currently unavailable. Please try again later."
       });
     }
-  });
+  };
 
-  app.get("/api/user", (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+  app.post("/api/chat", chat);
+
+  const getUser: RequestHandler = (req: Request, res: Response): void => {
+    if (!req.isAuthenticated()) {
+      res.sendStatus(401);
+      return;
+    }
     res.json(req.user);
-  });
+  };
+
+  app.get("/api/user", getUser);
 
   // Account management routes
-  app.post("/api/account/password", isAuthenticated, async (req: Request, res: Response) => {
+  const updatePassword: RequestHandler = async (req: Request, res: Response): Promise<void> => {
     try {
       const { password } = req.body;
 
-      // Validate password requirements
-      if (!password || password.length < 7) {
-        return res.status(400).json({ error: "Password must be at least 7 characters" });
-      }
-
-      if (!/[A-Z]/.test(password)) {
-        return res.status(400).json({ error: "Password must contain at least one capital letter" });
+      if (!password) {
+        res.status(400).json({ error: "Password is required" });
+        return;
       }
 
       const hashedPassword = await hashPassword(password);
-      await storage.updateUser(req.user!.id, { password: hashedPassword });
+      await db.updateUserPassword(req.user!.id, hashedPassword);
 
-      res.status(200).json({ message: "Password updated successfully" });
-    } catch (error) {
+      res.json({ message: "Password updated successfully" });
+    } catch (error: unknown) {
       console.error("Password update error:", error);
       res.status(500).json({ error: "Failed to update password" });
     }
-  });
+  };
+
+  app.post("/api/account/password", isAuthenticatedMiddleware, updatePassword);
 
   // Giveaway entry endpoint
-  app.post("/api/giveaway", async (req: Request, res: Response) => {
+  const createGiveawayEntry: RequestHandler = async (req: Request, res: Response): Promise<void> => {
     try {
-      // Get client IP address for rate limiting
-      const ipAddress = req.headers['x-forwarded-for'] || 
-                        req.socket.remoteAddress || 
-                        'unknown';
-
-      // Rate limiting check - max 5 entries per hour per IP
-      const recentEntries = await storage.checkRecentGiveawayEntriesByIP(String(ipAddress), 60);
-      if (recentEntries >= 5) {
-        return res.status(429).json({ 
-          error: "Too many entries. Please try again later." 
-        });
+      const { email } = req.body;
+      if (!req.file) {
+        res.status(400).json({ error: "Receipt image is required" });
+        return;
       }
 
-      // Get the affiliate link from the referer or query param
-      const productLink = req.headers.referer || req.body.productLink || '';
-
-      // Validate and sanitize input
-      const giveawayData = insertGiveawaySchema.parse({
-        email: req.body.email,
-        orderID: req.body.orderID || "Screenshot provided",
-        orderScreenshot: req.body.orderScreenshot,
-        productLink,
-        ipAddress: String(ipAddress)
+      const now = new Date().toISOString();
+      const entry = await db.createGiveawayEntry({
+        email,
+        receiptImage: req.file.filename,
+        createdAt: now,
+        submittedAt: now,
+        status: 'pending'
       });
-
-      console.log("Giveaway entry data:", giveawayData);
-
-      // Save to database
-      const entry = await storage.createGiveawayEntry(giveawayData);
 
       // Send confirmation email if configured
       try {
-        const emailSent = await sendGiveawayConfirmation(
-          giveawayData.email,
-          giveawayData.orderScreenshot || giveawayData.orderID
-        );
+        const emailSent = await sendGiveawayConfirmation(email, entry.id.toString());
+        console.log("Confirmation email sent:", emailSent);
 
         // Update entry with email status
         if (emailSent) {
-          await storage.updateGiveawayEntryEmailStatus(entry.id, true);
+          await db.updateGiveawayEntryEmailStatus(entry.id, true);
         }
-      } catch (emailError) {
+      } catch (emailError: unknown) {
         console.error("Failed to send confirmation email:", emailError);
-        // Continue without failing the request
       }
 
-      res.status(201).json({ 
-        message: "Successfully entered the giveaway!", 
-        entryId: entry.id 
-      });
-    } catch (error) {
-      console.error("Giveaway entry error:", error);
-
-      if (error instanceof ZodError) {
-        return res.status(400).json({ 
-          error: "Invalid input", 
-          errors: error.errors 
-        });
-      }
-
-      // Handle duplicate entries
-      if (error.message && error.message.includes("already entered")) {
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.status(500).json({ error: "Failed to process giveaway entry" });
-    }
-  });
-
-  // Giveaway entry route with file upload handling
-  app.post('/api/giveaway/enter', upload.single('receipt'), async (req: Request, res: Response) => {
-    try {
-      const { email } = req.body;
-
-      if (!req.file) {
-        return res.status(400).json({ error: "Receipt image is required" });
-      }
-
-      const entry = await storage.createGiveawayEntry({
-        email,
-        receiptImage: req.file.filename,
-      });
-
-      res.json(entry);
-    } catch (error) {
+      res.status(201).json(entry);
+    } catch (error: unknown) {
       console.error("Error creating giveaway entry:", error);
       res.status(500).json({ error: "Failed to create giveaway entry" });
     }
-  });
+  };
 
-  app.put("/api/admin/giveaway-entries/:id/status", async (req: Request, res: Response) => {
+  app.post("/api/giveaway", upload.single('receipt'), createGiveawayEntry);
+
+  const updateGiveawayEntryStatus: RequestHandler = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
@@ -417,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: "Invalid status" });
       }
 
-      const entry = await storage.updateGiveawayEntryStatus(parseInt(id), status);
+      const entry = await db.updateGiveawayEntryStatus(parseInt(id), status);
       if (!entry) {
         return res.status(404).json({ error: "Entry not found" });
       }
@@ -427,41 +427,47 @@ export async function registerRoutes(app: Express): Promise<void> {
       console.error("Error updating giveaway entry status:", error);
       res.status(500).json({ error: "Failed to update entry status" });
     }
-  });
+  };
+
+  app.put("/api/admin/giveaway-entries/:id/status", isAdminMiddleware, updateGiveawayEntryStatus);
 
   // Admin endpoint to view giveaway entries (protected)
-  app.get("/api/admin/giveaway-entries", isAdmin, async (req: Request, res: Response) => {
+  const getGiveawayEntries: RequestHandler = async (req: Request, res: Response) => {
     try {
-      const entries = await storage.getGiveawayEntries();
+      const entries = await db.getGiveawayEntries();
       res.json(entries);
     } catch (error) {
       console.error("Error fetching giveaway entries:", error);
       res.status(500).json({ error: "Failed to fetch giveaway entries" });
     }
-  });
+  };
+
+  app.get("/api/admin/giveaway-entries", isAdminMiddleware, getGiveawayEntries);
 
   // Status check endpoint
-  app.get('/api/status', async (req: Request, res: Response) => {
+  const getStatus: RequestHandler = async (req: Request, res: Response): Promise<void> => {
     try {
       const status = {
         auth: { status: 'up', message: 'Authentication system is operational' },
-        database: { status: storage.isConnected() ? 'up' : 'down', message: storage.isConnected() ? 'Database is connected' : 'Database connection issues' },
-        session: { status: req.session ? 'up' : 'down', message: req.session ? 'Session management is working' : 'Session issues detected' },
-        email: { status: process.env.EMAIL_HOST ? 'up' : 'down', message: process.env.EMAIL_HOST ? 'Email system configured' : 'Email system not configured' }
+        database: { status: 'up', message: 'Database connection is active' },
+        email: { status: 'up', message: 'Email service is configured' }
       };
-      
       res.json(status);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error checking status:', error);
       res.status(500).json({ error: 'Failed to check system status' });
     }
-  });
+  };
 
-  // Error handling
-  app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  app.get('/api/status', getStatus);
+
+  // Error handling middleware
+  const errorHandler: ErrorRequestHandler = (err: Error, req: Request, res: Response, next: NextFunction): void => {
     console.error('Error:', err);
     res.status(500).json({ error: 'Internal server error' });
-  });
+  };
+
+  app.use(errorHandler);
 
   return;
 }

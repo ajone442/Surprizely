@@ -94,38 +94,18 @@ export const giveawayEntries = pgTable("giveaway_entries", {
   id: serial("id").primaryKey(),
   email: text("email").notNull(),
   orderID: text("order_id"),
-  createdAt: text("created_at").notNull().default(new Date().toISOString()),
+  createdAt: text("created_at").notNull(),
+  submittedAt: text("submitted_at").notNull(),
   ipAddress: text("ip_address"),
   productLink: text("product_link"),
-  emailSent: boolean("email_sent").default(false),
+  emailSent: boolean("email_sent"),
   orderScreenshot: text("order_screenshot"),
   receiptImage: text("receipt_image"),
-  status: text("status").notNull().default("pending"),
+  status: text("status").notNull()
 });
 
-export const insertGiveawaySchema = createInsertSchema(giveawayEntries)
-  .omit({ id: true, createdAt: true, emailSent: true })
-  .partial({ orderID: true, ipAddress: true, productLink: true, orderScreenshot: true })
-  .extend({
-    receiptImage: z.string(),
-    status: z.enum(["pending", "approved", "rejected"]),
-  });
-
-export interface InsertGiveaway {
-  email: string;
-  receiptImage: string;
-  status?: 'pending' | 'approved' | 'rejected';
-}
-
-export interface GiveawayEntry {
-  id: number;
-  email: string;
-  receiptImage: string;
-  status: 'pending' | 'approved' | 'rejected';
-  submittedAt: string;
-}
-
-export type GiveawayEntryType = typeof giveawayEntries.$inferSelect;
+export type GiveawayEntry = typeof giveawayEntries.$inferSelect;
+export type InsertGiveaway = typeof giveawayEntries.$inferInsert;
 
 export const giftCategories = [
   "Electronics",
