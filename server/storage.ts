@@ -17,8 +17,8 @@ neonConfig.pipelineTLS = true;
 neonConfig.pipelineConnect = true;
 
 // Add timeout settings for serverless environment
-const CONNECT_TIMEOUT = 10000; // 10 seconds
-const IDLE_TIMEOUT = 2000; // 2 seconds for serverless functions
+const CONNECT_TIMEOUT = 30000; // 30 seconds
+const IDLE_TIMEOUT = 10000; // 10 seconds for serverless
 
 class PostgresStorage {
   private static instance: PostgresStorage;
@@ -32,10 +32,17 @@ class PostgresStorage {
       throw new Error("DATABASE_URL environment variable is required");
     }
 
+    // Log database URL format (without credentials)
+    const dbUrl = new URL(process.env.DATABASE_URL);
+    console.log('Database host:', dbUrl.hostname);
+    console.log('Database protocol:', dbUrl.protocol);
+
     // Create PostgreSQL pool optimized for serverless
     this.pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: true, // Force SSL for Neon
+      ssl: {
+        rejectUnauthorized: true // Enable SSL verification
+      },
       idleTimeoutMillis: IDLE_TIMEOUT,
       connectionTimeoutMillis: CONNECT_TIMEOUT,
       max: 1, // Limit connections for serverless
@@ -84,22 +91,30 @@ class PostgresStorage {
     }
   }
 
-  private async createNeonClient(retries = 3, delay = 1000): Promise<any> {
+  private async createNeonClient(retries = 3, delay = 2000): Promise<any> {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
         console.log(`Database connection attempt ${attempt}...`);
         
+        // Create the client with explicit SSL configuration
         const client = neon(process.env.DATABASE_URL);
-        // Test the connection
-        await client`SELECT 1`;
+        
+        // Test the connection with a timeout
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Connection test timeout')), 5000);
+        });
+        
+        const testPromise = client`SELECT 1`;
+        await Promise.race([testPromise, timeoutPromise]);
+        
         console.log('Database client created successfully');
         return client;
       } catch (error) {
         console.error(`Database connection attempt ${attempt} failed:`, error);
         if (attempt === retries) throw error;
-        console.log(`Retrying in ${delay * attempt}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay * attempt));
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
     throw new Error('Failed to connect to database after multiple attempts');
